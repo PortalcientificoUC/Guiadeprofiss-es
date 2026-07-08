@@ -353,18 +353,23 @@
 </div></div>
 
 <script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO DA PLANILHA — cole a URL do Apps Script abaixo,
+   entre as aspas retas " " (não use aspas curvas “ ”).
+   Este bloco é isolado: mesmo se der erro aqui, o jogo funciona.
+   ══════════════════════════════════════════════════════════════ */
+window.WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwlB2CxCsY4PM4P-OgcJMeuRCd-Rl3_f37YrS-US-OZ7ejZB28Z11NAgNW-4JOzebLE/exec
+";   // ← COLE A URL AQUI ENTRE AS ASPAS
+</script>
+<script>
 "use strict";
 /* ============================================================
    A TRILHA DO SUCESSO — UNINASSAU CACOAL · v2
    Cadastro de leads + personagem selecionável + quiz acessível
    ============================================================ */
 
-/* ---------- CONFIGURAÇÃO DA PLANILHA (Google Apps Script) ----------
-   Cole aqui a URL do App da Web gerada no Apps Script da planilha.
-   Exemplo: "https://script.google.com/macros/s/AKfycb.../exec"      */
 const CONFIG = {
-  WEBHOOK_URL: "https://script.google.com/macros/s/AKfycbwlB2CxCsY4PM4P-OgcJMeuRCd-Rl3_f37YrS-US-OZ7ejZB28Z11NAgNW-4JOzebLE/exec
-"   // ← COLE A URL AQUI ENTRE AS ASPAS
+  get WEBHOOK_URL(){ return (typeof window.WEBHOOK_URL==='string' && window.WEBHOOK_URL.indexOf('http')===0) ? window.WEBHOOK_URL : ""; }
 };
 
 /* ---------- Dados das profissões (perguntas fáceis, para todos) ---------- */
