@@ -363,7 +363,8 @@
    Cole aqui a URL do App da Web gerada no Apps Script da planilha.
    Exemplo: "https://script.google.com/macros/s/AKfycb.../exec"      */
 const CONFIG = {
-  WEBHOOK_URL: "https://script.google.com/macros/s/AKfycbwlB2CxCsY4PM4P-OgcJMeuRCd-Rl3_f37YrS-US-OZ7ejZB28Z11NAgNW-4JOzebLE/exec"   // ← COLE A URL AQUI ENTRE AS ASPAS
+  WEBHOOK_URL: "https://script.google.com/macros/s/AKfycbwlB2CxCsY4PM4P-OgcJMeuRCd-Rl3_f37YrS-US-OZ7ejZB28Z11NAgNW-4JOzebLE/exec
+"   // ← COLE A URL AQUI ENTRE AS ASPAS
 };
 
 /* ---------- Dados das profissões (perguntas fáceis, para todos) ---------- */
@@ -916,6 +917,8 @@ function roundRectG(g,x,y,w,h,r){
   g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
   g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
 }
+/* atalho usado pelo cenário (obstáculos, totens, chegada) no contexto principal */
+function roundRect(x,y,w,h,r){ roundRectG(ctx,x,y,w,h,r); }
 
 function drawPlayer(){
   ctx.save();
