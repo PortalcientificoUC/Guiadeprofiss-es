@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>A Trilha do Sucesso · Atlas de Profissões UNINASSAU Cacoal</title>
+<!--
+  ═══════════════════════════════════════════════════════════════
+  CONEXÃO COM A PLANILHA GOOGLE (leia as instruções no chat):
+  1) Abra a planilha "Leads — Trilha do Sucesso UNINASSAU Cacoal"
+  2) Extensões → Apps Script → cole o código fornecido → Implantar
+     como App da Web (acesso: Qualquer pessoa)
+  3) Copie a URL gerada e cole abaixo em WEBHOOK_URL, entre aspas.
+  Sem a URL, o jogo funciona normalmente e guarda os cadastros na
+  sessão (atalho Ctrl+Shift+E baixa um CSV com os registros).
+  ═══════════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1F3864; --navy-deep:#132445; --gold:#F2A900; --gold-soft:#FFD46B;
+    --green:#1E8A5B; --green-deep:#0B3D2E; --cream:#FDF3DE; --ink:#0d1b30;
+    --display:'Bricolage Grotesque', system-ui, sans-serif;
+    --body:'DM Sans', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%; overflow:hidden; background:var(--navy-deep); font-family:var(--body); color:var(--cream)}
+  #stage{position:fixed; inset:0; display:flex; align-items:center; justify-content:center}
+  #wrap{position:relative; width:100%; height:100%; max-width:1400px; margin:0 auto; overflow:hidden}
+  canvas#c{display:block; width:100%; height:100%; touch-action:none}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute; inset:0; pointer-events:none; z-index:5; padding:14px 18px;
+       display:flex; flex-direction:column; justify-content:space-between; opacity:0; transition:opacity .4s}
+  #hud.on{opacity:1}
+  .hud-row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .badge{pointer-events:auto; background:rgba(19,36,69,.72); backdrop-filter:blur(8px);
+         border:1.5px solid rgba(242,169,0,.5); border-radius:14px; padding:8px 14px;
+         display:flex; align-items:center; gap:9px; font-weight:700; letter-spacing:.2px}
+  .badge .k{font-family:var(--display); font-size:1.15rem; color:var(--gold-soft); line-height:1}
+  .badge .l{font-size:.62rem; text-transform:uppercase; letter-spacing:1.4px; opacity:.75; font-weight:700}
+  .hearts{display:flex; gap:5px; font-size:1.25rem; filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+  .hearts span{transition:transform .3s, opacity .3s}
+  .hearts span.lost{opacity:.22; transform:scale(.72)}
+  #progressTrack{pointer-events:none; height:9px; border-radius:99px; background:rgba(19,36,69,.6);
+        border:1px solid rgba(242,169,0,.35); overflow:hidden; flex:1; max-width:520px; margin:0 auto}
+  #progressFill{height:100%; width:0%; background:linear-gradient(90deg,var(--green),var(--gold));
+        border-radius:99px; transition:width .5s cubic-bezier(.2,.9,.2,1)}
+  #muteBtn{pointer-events:auto; background:rgba(19,36,69,.72); border:1.5px solid rgba(242,169,0,.5);
+        color:var(--gold-soft); width:42px; height:42px; border-radius:12px; cursor:pointer; font-size:1.1rem}
+  .bottom-hint{align-self:center; background:rgba(19,36,69,.55); border-radius:99px; padding:5px 16px;
+        font-size:.72rem; letter-spacing:.4px; opacity:.85; pointer-events:none}
+
+  /* ---------- Overlays ---------- */
+  .screen{position:absolute; inset:0; z-index:20; display:none; align-items:flex-start; justify-content:center;
+          padding:26px; text-align:center; overflow-y:auto}
+  .screen.on{display:flex}
+  .screen.center{align-items:center}
+  .panel{max-width:560px; width:100%; background:linear-gradient(160deg, rgba(31,56,100,.95), rgba(11,61,46,.93));
+         border:1.5px solid rgba(242,169,0,.55); border-radius:26px; padding:30px 28px 26px;
+         box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); position:relative; margin:auto 0}
+  .eyebrow{font-size:.66rem; letter-spacing:3px; text-transform:uppercase; color:var(--gold);
+           font-weight:700; margin-bottom:10px}
+  h1{font-family:var(--display); font-weight:800; line-height:.98; font-size:clamp(1.9rem,6.4vw,3rem);
+     letter-spacing:-1px; margin-bottom:6px}
+  h1 .sun{color:var(--gold)}
+  .lede{font-size:.94rem; line-height:1.45; opacity:.9; max-width:46ch; margin:10px auto 0}
+  .cta{font-family:var(--display); font-weight:800; font-size:1.12rem; letter-spacing:.3px;
+       background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#3a2600; border:none;
+       padding:15px 34px; border-radius:16px; cursor:pointer; margin-top:18px;
+       box-shadow:0 12px 30px rgba(242,169,0,.4), inset 0 1px 0 rgba(255,255,255,.5); transition:transform .12s}
+  .cta:active{transform:translateY(2px) scale(.98)}
+  .cta.ghost{background:transparent; color:var(--cream); border:1.6px solid rgba(253,243,222,.4);
+       box-shadow:none; font-size:.92rem; padding:12px 24px}
+  .cta.wa{background:linear-gradient(180deg,#37d07a,#1E8A5B); color:#fff; font-size:.95rem; padding:12px 22px;
+       box-shadow:0 10px 26px rgba(30,138,91,.45)}
+  .controls-hint{display:flex; gap:16px; justify-content:center; margin-top:16px; flex-wrap:wrap; opacity:.9}
+  .ch{display:flex; align-items:center; gap:8px; font-size:.8rem}
+  .key{font-family:var(--display); font-weight:700; background:rgba(253,243,222,.14);
+       border:1px solid rgba(253,243,222,.3); border-radius:8px; padding:3px 9px; min-width:34px}
+
+  /* ---------- Formulário de cadastro ---------- */
+  .form{display:flex; flex-direction:column; gap:11px; margin-top:16px; text-align:left}
+  .field label{display:block; font-size:.68rem; font-weight:700; text-transform:uppercase;
+       letter-spacing:1.4px; color:var(--gold-soft); margin:0 0 5px 4px}
+  .field input, .field select{width:100%; font-family:var(--body); font-weight:600; font-size:.98rem;
+       background:rgba(11,36,69,.62); border:1.5px solid rgba(242,169,0,.4); color:var(--cream);
+       border-radius:12px; padding:12px 14px; outline:none; transition:border-color .15s; appearance:none}
+  .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23F2A900' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+       background-repeat:no-repeat; background-position:right 14px center}
+  .field select option{color:#1F3864; background:#fff}
+  .field input::placeholder{color:rgba(253,243,222,.38); font-weight:500}
+  .field input:focus, .field select:focus{border-color:var(--gold)}
+  .field.err input, .field.err select{border-color:#ff6b5e; background:rgba(120,30,30,.35)}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  #formMsg{display:none; font-size:.82rem; font-weight:700; color:#ffb3ab; background:rgba(120,30,30,.35);
+       border:1px solid rgba(255,107,94,.5); border-radius:10px; padding:9px 12px; margin-top:2px}
+  #formMsg.show{display:block}
+
+  /* ---------- Seleção de personagem ---------- */
+  .char-label{font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:1.4px;
+       color:var(--gold-soft); margin:4px 0 7px 4px; text-align:left}
+  .char-row{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  .char-card{cursor:pointer; background:rgba(11,36,69,.55); border:2px solid rgba(242,169,0,.35);
+       border-radius:16px; padding:12px 8px 10px; display:flex; flex-direction:column; align-items:center;
+       gap:6px; transition:all .18s}
+  .char-card:hover{border-color:rgba(242,169,0,.7)}
+  .char-card.sel{border-color:var(--gold); background:rgba(242,169,0,.16);
+       box-shadow:0 0 0 3px rgba(242,169,0,.22), 0 10px 24px rgba(0,0,0,.3); transform:translateY(-2px)}
+  .char-card canvas{width:64px; height:88px}
+  .char-card .cn{font-family:var(--display); font-weight:700; font-size:.86rem}
+  .char-card .cs{font-size:.64rem; opacity:.7}
+  .char-card.sel .cn{color:var(--gold-soft)}
+
+  .contact-strip{margin-top:16px; padding:10px 14px; background:rgba(11,36,69,.5);
+       border:1px solid rgba(242,169,0,.3); border-radius:12px; font-size:.78rem; line-height:1.5}
+  .contact-strip b{color:var(--gold-soft)}
+
+  /* ---------- Station card ---------- */
+  #station{z-index:30}
+  .card{max-width:500px; width:100%; margin:auto 0; background:linear-gradient(165deg,#fff,#fbf3e2);
+        color:var(--ink); border-radius:24px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6);
+        border:2px solid rgba(242,169,0,.5); position:relative; transform:translateY(16px) scale(.96); opacity:0;
+        transition:transform .4s cubic-bezier(.2,.9,.25,1), opacity .4s}
+  #station.on .card{transform:none; opacity:1}
+  .card-top{padding:20px 24px 16px; color:#fff; position:relative; overflow:hidden}
+  .card-top::after{content:""; position:absolute; right:-30px; top:-30px; width:150px; height:150px;
+        background:radial-gradient(circle, rgba(255,255,255,.18), transparent 70%)}
+  .station-tag{font-size:.62rem; letter-spacing:2.5px; text-transform:uppercase; font-weight:700; opacity:.85}
+  .station-head{display:flex; align-items:center; gap:14px; margin-top:8px}
+  .station-ico{font-size:2.5rem; line-height:1; filter:drop-shadow(0 3px 6px rgba(0,0,0,.3))}
+  .station-name{font-family:var(--display); font-weight:800; font-size:1.8rem; line-height:1; letter-spacing:-.5px}
+  .station-reg{font-size:.72rem; font-weight:700; margin-top:4px; opacity:.9}
+  .card-body{padding:18px 24px 22px}
+  .whatline{font-size:.92rem; line-height:1.45; color:#33405a; margin-bottom:14px}
+  .quiz-q{font-family:var(--display); font-weight:700; font-size:1.08rem; margin-bottom:12px; color:var(--navy)}
+  .opts{display:flex; flex-direction:column; gap:9px}
+  .opt{text-align:left; font-family:var(--body); font-weight:500; font-size:.96rem; color:var(--navy);
+       background:#fff; border:1.6px solid rgba(31,56,100,.18); border-radius:13px; padding:12px 15px;
+       cursor:pointer; transition:all .16s; display:flex; align-items:center; gap:10px}
+  .opt:hover{border-color:var(--gold); background:#fffdf6}
+  .opt .dot{width:20px; height:20px; border-radius:50%; border:2px solid rgba(31,56,100,.3); flex-shrink:0}
+  .opt.correct{background:#e8f7ee; border-color:var(--green); color:var(--green-deep); font-weight:700}
+  .opt.correct .dot{background:var(--green); border-color:var(--green)}
+  .opt.wrong{background:#fdecec; border-color:#d64545; color:#8a2020}
+  .opt.wrong .dot{background:#d64545; border-color:#d64545}
+  .opt.disabled{pointer-events:none; opacity:.65}
+  .feedback{margin-top:14px; font-size:.88rem; line-height:1.45; padding:12px 14px; border-radius:12px;
+        display:none; background:#f0f5ff; color:#2a3c5e; border-left:4px solid var(--green)}
+  .feedback.show{display:block}
+  .feedback.miss{background:#fdf0e6; border-left-color:var(--gold)}
+  .card-cta{width:100%; margin-top:16px; font-family:var(--display); font-weight:800; font-size:1.05rem;
+        background:linear-gradient(180deg,var(--navy),var(--navy-deep)); color:var(--gold-soft); border:none;
+        padding:14px; border-radius:14px; cursor:pointer; display:none; box-shadow:0 8px 22px rgba(31,56,100,.4)}
+  .card-cta.show{display:block}
+
+  /* ---------- Win / Trophy ---------- */
+  #win .panel{max-width:600px; overflow:hidden}
+  .trophy{font-size:5rem; line-height:1; filter:drop-shadow(0 10px 30px rgba(242,169,0,.6));
+          animation:float 3s ease-in-out infinite}
+  @keyframes float{50%{transform:translateY(-12px)}}
+  .trophy-ring{width:140px; height:140px; margin:0 auto 2px; border-radius:50%; display:flex;
+       align-items:center; justify-content:center; position:relative;
+       background:radial-gradient(circle, rgba(242,169,0,.28), transparent 68%)}
+  .trophy-ring::before{content:""; position:absolute; inset:0; border-radius:50%;
+       border:2px solid rgba(242,169,0,.5); animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(.85); opacity:.9} 100%{transform:scale(1.5); opacity:0}}
+  .winner-name{font-family:var(--display); font-weight:800; font-size:1.4rem; color:var(--gold-soft);
+       margin-top:4px; letter-spacing:.3px}
+  .score-grid{display:flex; gap:12px; justify-content:center; margin:18px 0 4px; flex-wrap:wrap}
+  .score-card{background:rgba(11,36,69,.5); border:1px solid rgba(242,169,0,.35); border-radius:14px;
+       padding:12px 18px; min-width:92px}
+  .score-card .n{font-family:var(--display); font-weight:800; font-size:1.7rem; color:var(--gold-soft); line-height:1}
+  .score-card .t{font-size:.6rem; text-transform:uppercase; letter-spacing:1.3px; opacity:.75; margin-top:4px; font-weight:700}
+  .rank-line{font-size:.94rem; margin-top:12px; line-height:1.5}
+  .rank-line b{color:var(--gold-soft)}
+  .gift{margin:16px auto 10px; max-width:440px; background:rgba(242,169,0,.12);
+       border:1.5px dashed rgba(242,169,0,.75); border-radius:18px; padding:16px 18px 18px;
+       display:flex; flex-direction:column; align-items:center; gap:8px;
+       animation:giftGlow 2.6s ease-in-out infinite}
+  @keyframes giftGlow{50%{box-shadow:0 0 26px rgba(242,169,0,.35)}}
+  .gift-ico{font-size:2.2rem; line-height:1; animation:float 3s ease-in-out infinite}
+  .gift-tx{font-size:.88rem; line-height:1.5}
+  .gift-tx b{color:var(--gold-soft)}
+  .gift-btn{margin-top:6px; font-size:1rem; padding:13px 24px; text-decoration:none; display:inline-block}
+  .cta-row{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:6px; align-items:center}
+  .foot{font-size:.72rem; opacity:.65; margin-top:16px; line-height:1.5}
+
+  #toast{position:absolute; top:64px; left:50%; transform:translateX(-50%) translateY(-8px);
+       background:rgba(30,138,91,.92); color:#fff; font-weight:700; font-size:.85rem; padding:8px 18px;
+       border-radius:99px; z-index:8; opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+       box-shadow:0 8px 20px rgba(0,0,0,.3)}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  .flourish{position:sticky; bottom:0; text-align:center; font-size:.64rem; padding-top:10px;
+       letter-spacing:2px; text-transform:uppercase; opacity:.55; color:var(--gold); font-weight:700}
+
+  @media(max-width:560px){
+    .panel{padding:24px 18px 22px}
+    .row2{grid-template-columns:1fr}
+    .station-name{font-size:1.5rem}
+    .screen{padding:16px}
+  }
+</style>
+</head>
+<body>
+<div id="stage"><div id="wrap">
+  <canvas id="c"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-row">
+      <div class="badge"><span class="k" id="hudStations">0/14</span><span class="l">Estações</span></div>
+      <div id="progressTrack"><div id="progressFill"></div></div>
+      <button id="muteBtn" aria-label="Som">🔊</button>
+    </div>
+    <div class="hud-row" style="align-items:flex-end">
+      <div class="badge"><span class="k" id="hudScore">0</span><span class="l">Conhecimento</span></div>
+      <div class="bottom-hint" id="bottomHint">Toque / Espaço para pular</div>
+      <div class="hearts" id="hearts"><span>❤️</span><span>❤️</span><span>❤️</span></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- CADASTRO / START -->
+  <div class="screen on" id="start">
+    <div class="panel">
+      <div class="eyebrow">UNINASSAU Cacoal · Rondônia · Guia de Profissões</div>
+      <h1>A Trilha do <span class="sun">Sucesso</span></h1>
+      <p class="lede">Corra pela Amazônia, desbrave as <b>14 estações de carreira</b> e conquiste o <b>Troféu UNINASSAU Cacoal</b>. Preencha seu passaporte de explorador(a) para começar:</p>
+
+      <div class="form">
+        <div class="field" id="fNome">
+          <label>Nome completo *</label>
+          <input id="inNome" maxlength="60" placeholder="Ex.: Maria Oliveira da Silva" autocomplete="name">
+        </div>
+        <div class="field" id="fZap">
+          <label>WhatsApp *</label>
+          <input id="inZap" inputmode="tel" maxlength="16" placeholder="(69) 99999-9999" autocomplete="tel">
+        </div>
+        <div class="row2">
+          <div class="field" id="fC1">
+            <label>1º curso de interesse *</label>
+            <select id="inC1"><option value="">Escolha…</option></select>
+          </div>
+          <div class="field" id="fC2">
+            <label>2º curso de interesse *</label>
+            <select id="inC2"><option value="">Escolha…</option></select>
+          </div>
+        </div>
+
+        <div>
+          <div class="char-label">Escolha seu personagem *</div>
+          <div class="char-row">
+            <div class="char-card" id="charF" role="button" tabindex="0">
+              <canvas id="prevF" width="128" height="176"></canvas>
+              <div class="cn">Jovem Exploradora</div>
+              <div class="cs">Ágil e determinada</div>
+            </div>
+            <div class="char-card" id="charM" role="button" tabindex="0">
+              <canvas id="prevM" width="128" height="176"></canvas>
+              <div class="cn">Jovem Explorador</div>
+              <div class="cs">Rápido e corajoso</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="formMsg"></div>
+      </div>
+
+      <button class="cta" id="startBtn">Iniciar expedição ▸</button>
+
+      <div class="controls-hint">
+        <div class="ch"><span class="key">Espaço</span> pular</div>
+        <div class="ch"><span class="key">↑</span> pulo duplo</div>
+        <div class="ch"><span class="key">👆</span> toque na tela</div>
+      </div>
+
+      <div class="contact-strip">📲 Matrículas UNINASSAU Cacoal — fale com a <b>ERIKA: (69) 99905-8972</b></div>
+      <div class="flourish">Prof. Heriton Marcelo · Curso de Fisioterapia · Edição 2026</div>
+    </div>
+  </div>
+
+  <!-- STATION QUIZ -->
+  <div class="screen center" id="station">
+    <div class="card">
+      <div class="card-top" id="cardTop">
+        <div class="station-tag" id="cardTag"></div>
+        <div class="station-head">
+          <div class="station-ico" id="cardIco">🩺</div>
+          <div>
+            <div class="station-name" id="cardName"></div>
+            <div class="station-reg" id="cardReg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="whatline" id="cardWhat"></p>
+        <p class="quiz-q" id="cardQ"></p>
+        <div class="opts" id="cardOpts"></div>
+        <div class="feedback" id="cardFb"></div>
+        <button class="card-cta" id="cardNext">Seguir na trilha ▸</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div class="screen center" id="over">
+    <div class="panel">
+      <div class="eyebrow">A floresta é generosa com quem insiste</div>
+      <h1>Fôlego é <span class="sun">treino</span></h1>
+      <p class="lede">Você tropeçou na trilha, mas todo explorador cai antes de chegar. Retome de onde parou e siga em frente.</p>
+      <div class="cta-row">
+        <button class="cta" id="retryBtn">Retomar da última estação ▸</button>
+        <button class="cta ghost" id="restartBtn">Começar do início</button>
+      </div>
+      <div class="contact-strip">📲 Enquanto recupera o fôlego: matrículas com a <b>ERIKA (69) 99905-8972</b></div>
+    </div>
+  </div>
+
+  <!-- WIN / TROPHY -->
+  <div class="screen center" id="win">
+    <div class="panel">
+      <div class="eyebrow">Expedição concluída · Rondônia 2026</div>
+      <div class="trophy-ring"><div class="trophy">🏆</div></div>
+      <h1>Troféu <span class="sun">UNINASSAU</span> Cacoal</h1>
+      <div class="winner-name" id="winName">Explorador(a)</div>
+      <div class="score-grid">
+        <div class="score-card"><div class="n" id="winScore">0</div><div class="t">Conhecimento</div></div>
+        <div class="score-card"><div class="n" id="winStations">14</div><div class="t">Estações</div></div>
+        <div class="score-card"><div class="n" id="winAcc">0%</div><div class="t">Acertos</div></div>
+      </div>
+      <p class="rank-line" id="winRank"></p>
+      <div class="gift">
+        <div class="gift-ico">🎁</div>
+        <div class="gift-tx">
+          <b>Seu presente de campeão(ã)!</b>
+          Acesso exclusivo ao <b>Guia de Profissões — UNINASSAU Cacoal 2026</b>, o atlas completo das 14 carreiras.
+        </div>
+        <a class="cta gift-btn" href="https://gamma.app/docs/Atlas-de-Profissoes-wrydjta0ltjg05g" target="_blank" rel="noopener">📖 Abrir meu Guia de Profissões ▸</a>
+      </div>
+      <div class="cta-row">
+        <a class="cta wa" id="waBtn" href="https://wa.me/5569999058972?text=Ol%C3%A1%20Erika!%20Conclu%C3%AD%20a%20Trilha%20do%20Sucesso%20da%20UNINASSAU%20Cacoal%20e%20quero%20saber%20mais%20sobre%20matr%C3%ADculas!" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block">💬 Falar com a Erika (matrículas)</a>
+        <button class="cta ghost" id="playAgain">Jogar de novo ▸</button>
+      </div>
+      <p class="foot">Seu futuro tem endereço: <b>Cacoal · Jardim Clodoaldo · Rondônia</b>.<br>Setor de matrículas: <b>ERIKA (69) 99905-8972</b> · Garanta sua vaga para 2026.</p>
+    </div>
+  </div>
+
+</div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   A TRILHA DO SUCESSO — UNINASSAU CACOAL · v2
+   Cadastro de leads + personagem selecionável + quiz acessível
+   ============================================================ */
+
+/* ---------- CONFIGURAÇÃO DA PLANILHA (Google Apps Script) ----------
+   Cole aqui a URL do App da Web gerada no Apps Script da planilha.
+   Exemplo: "https://script.google.com/macros/s/AKfycb.../exec"      */
+const CONFIG = {
+  WEBHOOK_URL: "https://script.google.com/macros/s/AKfycbwlB2CxCsY4PM4P-OgcJMeuRCd-Rl3_f37YrS-US-OZ7ejZB28Z11NAgNW-4JOzebLE/exec"   // ← COLE A URL AQUI ENTRE AS ASPAS
+};
+
+/* ---------- Dados das profissões (perguntas fáceis, para todos) ---------- */
+const STATIONS = [
+  { name:"Medicina", ico:"🩺", eixo:"SAÚDE HUMANA", reg:"6 anos · Registro CRM", accent:"#c0392b",
+    what:"Investiga, diagnostica e trata doenças, cuidando das pessoas do nascimento ao fim da vida.",
+    q:"Quando você fica doente e precisa de diagnóstico e tratamento, qual profissional procura?",
+    opts:["O médico","O arquiteto","O advogado"], correct:0,
+    fb:"Isso mesmo! E na UNINASSAU Cacoal o futuro médico treina em laboratórios de simulação e pratica na rede de saúde de Cacoal desde cedo." },
+  { name:"Fisioterapia", ico:"💪", eixo:"SAÚDE HUMANA", reg:"5 anos · Registro CREFITO", accent:"#1E8A5B",
+    what:"Devolve movimento e função — da recuperação de lesões ao envelhecimento saudável.",
+    q:"Quem ajuda uma pessoa a voltar a andar e se movimentar depois de um acidente?",
+    opts:["O agrônomo","O fisioterapeuta","O dentista"], correct:1,
+    fb:"Exato! Na clínica-escola da UNINASSAU Cacoal, os alunos de Fisioterapia atendem pacientes reais da comunidade desde os primeiros períodos." },
+  { name:"Odontologia", ico:"🦷", eixo:"SAÚDE HUMANA", reg:"5 anos · Registro CRO", accent:"#2e86de",
+    what:"Cuida da saúde bucal por inteiro — da prevenção à cirurgia, da estética ao sorriso novo.",
+    q:"Quem cuida dos seus dentes e do seu sorriso?",
+    opts:["O veterinário","O psicólogo","O dentista"], correct:2,
+    fb:"Certo! Nas clínicas odontológicas da UNINASSAU Cacoal você aprende atendendo pessoas de verdade — não só manequins." },
+  { name:"Enfermagem", ico:"💉", eixo:"SAÚDE HUMANA", reg:"5 anos · Registro COREN", accent:"#8e44ad",
+    what:"Planeja e executa o cuidado — a espinha dorsal de qualquer hospital ou posto de saúde.",
+    q:"Quem aplica vacinas, faz curativos e cuida do paciente no hospital dia e noite?",
+    opts:["O enfermeiro","O engenheiro","O nutricionista"], correct:0,
+    fb:"Isso! É uma das profissões que mais emprega em Rondônia — e a UNINASSAU Cacoal tem laboratórios e estágios na rede hospitalar." },
+  { name:"Psicologia", ico:"🧠", eixo:"SAÚDE HUMANA", reg:"5 anos · Registro CRP", accent:"#e67e22",
+    what:"Estuda o comportamento e as emoções para promover saúde mental e bem-estar.",
+    q:"Quem cuida das emoções e da mente das pessoas?",
+    opts:["O farmacêutico","O psicólogo","O agrônomo"], correct:1,
+    fb:"Certo! A saúde mental é uma das áreas que mais cresce — e a UNINASSAU Cacoal tem serviço-escola de psicologia aberto à comunidade." },
+  { name:"Nutrição", ico:"🥗", eixo:"SAÚDE HUMANA", reg:"4 anos · Registro CRN", accent:"#27ae60",
+    what:"Transforma alimentação em saúde — da clínica ao esporte, usando até os sabores da Amazônia.",
+    q:"Quem monta um cardápio saudável para você comer melhor e ter mais energia?",
+    opts:["O nutricionista","O advogado","O arquiteto"], correct:0,
+    fb:"Isso mesmo! Na UNINASSAU Cacoal, a Nutrição valoriza os alimentos da Amazônia — das castanhas aos peixes da região." },
+  { name:"Farmácia", ico:"💊", eixo:"SAÚDE HUMANA", reg:"5 anos · Registro CRF", accent:"#16a085",
+    what:"É o especialista dos medicamentos — da fabricação à orientação de como usar.",
+    q:"Quem entende tudo de remédios e orienta a forma certa de tomá-los?",
+    opts:["O dentista","O veterinário","O farmacêutico"], correct:2,
+    fb:"Certo! Na UNINASSAU Cacoal você pratica em laboratórios de química e faz estágio em farmácia hospitalar e análises clínicas." },
+  { name:"Biomedicina", ico:"🔬", eixo:"SAÚDE HUMANA", reg:"4 anos · Registro CRBM", accent:"#2980b9",
+    what:"O detetive da saúde: descobre doenças analisando exames no laboratório.",
+    q:"Quem analisa o exame de sangue no laboratório para descobrir o que você tem?",
+    opts:["O biomédico","O professor","O arquiteto"], correct:0,
+    fb:"Isso! São mais de 30 áreas de atuação — e a UNINASSAU Cacoal tem laboratórios de microbiologia e biologia molecular para praticar." },
+  { name:"Fonoaudiologia", ico:"🗣️", eixo:"SAÚDE HUMANA", reg:"4 anos · Registro CFFa", accent:"#c0559f",
+    what:"Cuida da fala, da audição, da voz e da comunicação humana.",
+    q:"Quem ajuda uma criança que tem dificuldade para falar?",
+    opts:["O agrônomo","O fonoaudiólogo","O engenheiro"], correct:1,
+    fb:"Certo! Profissão especializada e com pouca concorrência no interior — na UNINASSAU Cacoal a prática começa cedo, na clínica-escola." },
+  { name:"Educação Física", ico:"🏃", eixo:"SAÚDE HUMANA", reg:"4 anos · Registro CREF", accent:"#e74c3c",
+    what:"Promove saúde e qualidade de vida pelo movimento — do esporte à academia.",
+    q:"Quem monta seu treino na academia e orienta os exercícios do jeito certo?",
+    opts:["O profissional de Educação Física","O dentista","O advogado"], correct:0,
+    fb:"Isso mesmo! O mundo fitness cresce em Rondônia — e a UNINASSAU Cacoal tem laboratórios de avaliação física e fisiologia do exercício." },
+  { name:"Medicina Veterinária", ico:"🐾", eixo:"SAÚDE ANIMAL · UM SÓ MUNDO", reg:"5 anos · Registro CRMV", accent:"#d35400",
+    what:"Cuida da saúde dos animais — do pet de estimação ao gado da fazenda.",
+    q:"Quem cuida da saúde do seu cachorro, do gato e dos animais da fazenda?",
+    opts:["O psicólogo","O farmacêutico","O veterinário"], correct:2,
+    fb:"Certo! Rondônia é potência da pecuária — e a UNINASSAU Cacoal conecta o curso direto com o agronegócio e a fauna amazônica." },
+  { name:"Direito", ico:"⚖️", eixo:"JUSTIÇA & SOCIEDADE", reg:"5 anos · Registro OAB", accent:"#34495e",
+    what:"Atua onde há conflito, contrato e cidadania — defendendo pessoas e empresas.",
+    q:"Quem defende as pessoas na justiça?",
+    opts:["O advogado","O biomédico","O nutricionista"], correct:0,
+    fb:"Isso! Na UNINASSAU Cacoal o treino para a prova da OAB já vem dentro do curso, com simulações de audiência e júri." },
+  { name:"Agronomia", ico:"🌱", eixo:"TERRA, AGRO & SUSTENTABILIDADE", reg:"5 anos · Registro CREA", accent:"#7f8c2a",
+    what:"Cuida do solo e das plantações — fazendo o campo produzir mais e melhor.",
+    q:"Quem cuida das plantações e ajuda o campo a produzir os alimentos que chegam à sua mesa?",
+    opts:["O dentista","O agrônomo","O psicólogo"], correct:1,
+    fb:"Certo! Rondônia é uma das fronteiras agrícolas que mais crescem no Brasil — e a UNINASSAU Cacoal tem áreas experimentais para praticar." },
+  { name:"Arquitetura e Urbanismo", ico:"📐", eixo:"CIDADE, PROJETO & CRIAÇÃO", reg:"5 anos · Registro CAU", accent:"#0392a5",
+    what:"Projeta casas, prédios e cidades — unindo arte, técnica e sustentabilidade.",
+    q:"Quem desenha o projeto de casas e prédios antes de eles serem construídos?",
+    opts:["O veterinário","O enfermeiro","O arquiteto"], correct:2,
+    fb:"Isso mesmo! Na UNINASSAU Cacoal você projeta desde cedo, nos ateliês com tecnologia BIM, pensando nas cidades da Amazônia." }
+];
+const TOTAL = STATIONS.length;
+const COURSE_LIST = ["Fisioterapia", ...STATIONS.map(s=>s.name).filter(n=>n!=="Fisioterapia")];
+
+/* ---------- Lead / cadastro ---------- */
+let lead = null;                 // {nome, zap, c1, c2, char}
+let sessionLeads = [];           // backup local da sessão (Ctrl+Shift+E exporta CSV)
+
+function sendLead(status){
+  if(!lead) return;
+  const rec = {
+    datahora: new Date().toLocaleString('pt-BR'),
+    nome: lead.nome, whatsapp: lead.zap,
+    curso1: lead.c1, curso2: lead.c2,
+    personagem: lead.char==='F' ? 'Jovem Exploradora' : 'Jovem Explorador',
+    pontuacao: String(score||0), acertos: String(correctCount||0)+"/"+TOTAL,
+    status
+  };
+  sessionLeads.push(rec);
+  if(CONFIG.WEBHOOK_URL){
+    try{
+      const body = new URLSearchParams(rec);
+      fetch(CONFIG.WEBHOOK_URL, { method:'POST', mode:'no-cors', body });
+    }catch(e){ /* silencioso: backup local mantido */ }
+  }
+}
+/* Exportar backup da sessão (para o stand, se ficar sem internet) */
+window.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.shiftKey && e.code==='KeyE'){
+    if(!sessionLeads.length) return;
+    const head = "Data/Hora;Nome Completo;WhatsApp;1º Curso;2º Curso;Personagem;Pontuação;Acertos;Status\n";
+    const rows = sessionLeads.map(r=>[r.datahora,r.nome,r.whatsapp,r.curso1,r.curso2,r.personagem,r.pontuacao,r.acertos,r.status].join(';')).join('\n');
+    const blob = new Blob(["\ufeff"+head+rows], {type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='leads-trilha-do-sucesso.csv'; a.click();
+  }
+});
+
+/* ---------- Setup canvas ---------- */
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+let W=0, H=0, DPR=1, GROUND=0;
+function resize(){
+  const r = cv.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = r.width; H = r.height;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  GROUND = H*0.80;
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------- Audio ---------- */
+let AC=null, muted=false;
+function initAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC&&AC.state==='suspended') AC.resume(); }
+function beep(freq, dur=0.09, type='sine', vol=0.14){
+  if(!AC||muted) return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.value=freq; o.connect(g); g.connect(AC.destination);
+  const t=AC.currentTime; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.start(t); o.stop(t+dur+0.02);
+}
+function chord(freqs, dur=0.5, type='triangle'){ freqs.forEach((f,i)=>setTimeout(()=>beep(f,dur,type,0.12),i*70)); }
+const sJump=()=>beep(520,0.12,'square',0.10);
+const sOrb=()=>{beep(880,0.07,'sine',0.12); setTimeout(()=>beep(1180,0.09,'sine',0.10),50);};
+const sHit=()=>beep(150,0.22,'sawtooth',0.16);
+const sRight=()=>chord([523,659,784],0.35);
+const sWrong=()=>beep(200,0.3,'sawtooth',0.12);
+const sWin=()=>chord([523,659,784,1046,1318],0.6,'triangle');
+const sStation=()=>chord([392,523,659],0.3,'sine');
+
+/* ---------- Estado do jogo ---------- */
+let state='start';
+let player, obstacles, orbs, particles, speed, baseSpeed;
+let score=0, hearts, stationIdx=0, correctCount=0, lastCheckpointIdx=0;
+let nextObsX, nextOrbX, hitFlash;
+let scrollX=0, groundOffset=0;
+
+const SEG = 1600;
+function stationWorldX(i){ return 700 + i*SEG; }
+const FINISH_X = ()=> stationWorldX(TOTAL-1) + 900;
+
+function resetGame(fromCheckpoint){
+  const startIdx = fromCheckpoint ? lastCheckpointIdx : 0;
+  stationIdx = startIdx;
+  if(!fromCheckpoint){ score=0; correctCount=0; lastCheckpointIdx=0; }
+  hearts = 3;
+  speed = baseSpeed = 4.4;
+  obstacles=[]; orbs=[]; particles=[]; hitFlash=0;
+  scrollX = startIdx>0 ? stationWorldX(startIdx-1)+SEG*0.15 : 0;
+  player = { x: W*0.22, y: GROUND-64, vy:0, w:34, h:60, onGround:true, jumps:0, run:0 };
+  nextObsX = scrollX + W + 300;
+  nextOrbX = scrollX + W + 160;
+  updateHUD();
+}
+
+/* ---------- Geração procedural ---------- */
+function spawnField(){
+  const viewEnd = scrollX + W + 900;
+  const near = wx => { for(let i=0;i<TOTAL;i++){ if(Math.abs(stationWorldX(i)-wx)<190) return true; } return false; };
+  while(nextObsX < viewEnd){
+    if(!near(nextObsX) && nextObsX < FINISH_X()-200){
+      const kind = Math.random()<0.5 ? 'log' : (Math.random()<0.5?'rock':'water');
+      obstacles.push({ x:nextObsX, kind, w: kind==='water'?70:44, h: kind==='log'?34:40, passed:false });
+    }
+    nextObsX += 380 + Math.random()*360 - Math.min(140, speed*14);
+  }
+  while(nextOrbX < viewEnd){
+    if(!near(nextOrbX) && nextOrbX < FINISH_X()-100){
+      const arc = Math.random()<0.4;
+      const baseY = GROUND-70 - (arc?70:0) - Math.random()*30;
+      const n = arc?3:1;
+      for(let k=0;k<n;k++){
+        orbs.push({ x:nextOrbX+k*46, y: baseY - (arc? Math.sin(k/Math.max(1,n-1)*Math.PI)*40:0), got:false, ph:Math.random()*6.28 });
+      }
+    }
+    nextOrbX += 260 + Math.random()*240;
+  }
+  obstacles = obstacles.filter(o=> o.x - scrollX > -120);
+  orbs = orbs.filter(o=> o.x - scrollX > -80 && !o.got);
+}
+
+/* ---------- Input ---------- */
+function jump(){
+  if(state!=='run') return;
+  if(player.onGround || player.jumps<2){
+    player.vy = player.onGround ? -13.2 : -11.6;
+    player.onGround=false; player.jumps++; sJump();
+    for(let i=0;i<6;i++) particles.push({x:player.x, y:GROUND, vx:(Math.random()-0.5)*3, vy:Math.random()*-2, life:20, c:'#F2A900', r:2});
+  }
+}
+window.addEventListener('keydown', e=>{
+  if(state==='start') return; // não roubar o teclado do formulário
+  if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){ e.preventDefault(); initAudio(); jump(); }
+});
+cv.addEventListener('pointerdown', ()=>{ initAudio(); jump(); });
+
+/* ---------- Loop ---------- */
+let last=performance.now();
+function loop(now){
+  const dt = Math.min(2, (now-last)/16.67); last=now;
+  if(state==='run') update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  speed = baseSpeed + Math.min(3.2, stationIdx*0.18);
+  const mv = speed*dt;
+  scrollX += mv;
+  groundOffset = (groundOffset + mv) % 80;
+  spawnField();
+
+  player.vy += 0.62*dt;
+  player.y += player.vy*dt;
+  player.run += mv*0.06;
+  if(player.y >= GROUND-player.h){ player.y=GROUND-player.h; player.vy=0; player.onGround=true; player.jumps=0; }
+
+  const px=player.x, pw=player.w, py=player.y, ph=player.h;
+  for(const o of obstacles){
+    const ox = o.x - scrollX;
+    if(ox < px+pw && ox+o.w > px){
+      const otop = GROUND - o.h;
+      if(o.kind==='water'){
+        if(py+ph > GROUND-6 && player.onGround){ hitPlayer(o); }
+      } else {
+        if(py+ph > otop+6 && !o.passed){ hitPlayer(o); }
+      }
+    }
+    if(!o.passed && ox+o.w < px){ o.passed=true; }
+  }
+
+  for(const o of orbs){
+    if(o.got) continue;
+    const ox=o.x-scrollX;
+    if(Math.abs(ox-(px+pw/2))<28 && Math.abs(o.y-(py+ph/2))<34){
+      o.got=true; score+=10; sOrb(); updateHUD();
+      for(let i=0;i<8;i++) particles.push({x:ox, y:o.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:24, c:'#FFD46B', r:2.5});
+    }
+  }
+
+  if(stationIdx < TOTAL){
+    const sx = stationWorldX(stationIdx) - scrollX;
+    if(sx < px+pw){ openStation(stationIdx); }
+  } else if(scrollX >= FINISH_X()){ winGame(); }
+
+  for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.12*dt; p.life-=dt; }
+  particles = particles.filter(p=>p.life>0);
+  if(hitFlash>0) hitFlash-=dt;
+}
+
+function hitPlayer(o){
+  if(hitFlash>0) return;
+  o.passed=true;
+  hearts--; hitFlash=42; sHit(); updateHUD();
+  player.vy = -6;
+  for(let i=0;i<12;i++) particles.push({x:player.x+16, y:player.y+20, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:26, c:'#ff6b5e', r:3});
+  if(hearts<=0) gameOver();
+}
+
+/* ---------- Estação / quiz ---------- */
+function openStation(i){
+  state='station'; sStation();
+  const s = STATIONS[i];
+  document.getElementById('cardTag').textContent = s.eixo + " · ESTAÇÃO " + String(i+1).padStart(2,'0');
+  document.getElementById('cardIco').textContent = s.ico;
+  document.getElementById('cardName').textContent = s.name;
+  document.getElementById('cardReg').textContent = "Bacharelado · " + s.reg;
+  document.getElementById('cardWhat').textContent = s.what;
+  document.getElementById('cardQ').textContent = s.q;
+  document.getElementById('cardTop').style.background =
+      "linear-gradient(135deg,"+s.accent+", "+shade(s.accent,-28)+")";
+  const opts = document.getElementById('cardOpts'); opts.innerHTML='';
+  const fb = document.getElementById('cardFb'); fb.className='feedback'; fb.textContent='';
+  const nextBtn = document.getElementById('cardNext'); nextBtn.className='card-cta';
+  let done=false;
+  s.opts.forEach((txt,idx)=>{
+    const b=document.createElement('button'); b.className='opt';
+    b.innerHTML='<span class="dot"></span><span>'+txt+'</span>';
+    b.onclick=()=>{
+      if(done) return; done=true;
+      const all=opts.querySelectorAll('.opt'); all.forEach(x=>x.classList.add('disabled'));
+      if(idx===s.correct){
+        b.classList.add('correct'); score+=50; correctCount++; sRight();
+        fb.className='feedback show'; fb.textContent="✅ "+s.fb;
+      } else {
+        b.classList.add('wrong'); sWrong();
+        all[s.correct].classList.remove('disabled'); all[s.correct].classList.add('correct');
+        fb.className='feedback show miss'; fb.textContent="A resposta certa está em verde. "+s.fb;
+      }
+      updateHUD();
+      nextBtn.className='card-cta show';
+    };
+    opts.appendChild(b);
+  });
+  document.getElementById('station').classList.add('on');
+}
+document.getElementById('cardNext').onclick=()=>{
+  document.getElementById('station').classList.remove('on');
+  stationIdx++; lastCheckpointIdx=stationIdx;
+  nextObsX = Math.max(nextObsX, scrollX+W+320);
+  nextOrbX = Math.max(nextOrbX, scrollX+W+200);
+  updateHUD();
+  if(stationIdx>=TOTAL){
+    document.getElementById('bottomHint').textContent = "Corra até a linha de chegada! 🏁";
+  }
+  state='run';
+};
+
+/* ---------- Fim ---------- */
+function gameOver(){
+  state='over'; sWrong();
+  document.getElementById('over').classList.add('on');
+}
+function winGame(){
+  state='win'; sWin();
+  document.getElementById('winName').textContent = lead ? lead.nome.split(' ')[0] : "Explorador(a)";
+  document.getElementById('winScore').textContent = score;
+  document.getElementById('winStations').textContent = TOTAL;
+  const acc = Math.round((correctCount/TOTAL)*100);
+  document.getElementById('winAcc').textContent = acc+"%";
+  let rank, msg;
+  if(acc>=90){ rank="Reitor(a) da Selva"; msg="conhece cada trilha de perto"; }
+  else if(acc>=70){ rank="Explorador(a) Sênior"; msg="tem faro para a carreira certa"; }
+  else if(acc>=50){ rank="Desbravador(a)"; msg="já enxerga o mapa com clareza"; }
+  else { rank="Aventureiro(a) Iniciante"; msg="começou uma grande jornada"; }
+  document.getElementById('winRank').innerHTML = "Título conquistado: <b>"+rank+"</b> — quem "+msg+".";
+  sendLead("Concluiu — Troféu 🏆");
+  launchConfetti();
+  document.getElementById('win').classList.add('on');
+}
+
+/* ---------- HUD ---------- */
+function updateHUD(){
+  document.getElementById('hudStations').textContent = Math.min(stationIdx,TOTAL)+"/"+TOTAL;
+  document.getElementById('hudScore').textContent = score;
+  document.getElementById('progressFill').style.width = (Math.min(stationIdx,TOTAL)/TOTAL*100)+"%";
+  const hs=document.getElementById('hearts').children;
+  for(let i=0;i<3;i++) hs[i].classList.toggle('lost', i>=hearts);
+}
+
+/* ================= RENDER ================= */
+function shade(hex,amt){
+  const c=hex.replace('#',''); let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  r=Math.max(0,Math.min(255,r+amt)); g=Math.max(0,Math.min(255,g+amt)); b=Math.max(0,Math.min(255,b+amt));
+  return "rgb("+r+","+g+","+b+")";
+}
+
+function drawParallax(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#0f1f45'); g.addColorStop(0.42,'#3a3670'); g.addColorStop(0.66,'#b5638f'); g.addColorStop(0.82,'#F0A24A');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H*0.82);
+  const sunX=W*0.72, sunY=H*0.34;
+  const sg=ctx.createRadialGradient(sunX,sunY,10,sunX,sunY,150);
+  sg.addColorStop(0,'rgba(255,232,180,.95)'); sg.addColorStop(0.4,'rgba(242,169,0,.55)'); sg.addColorStop(1,'rgba(242,169,0,0)');
+  ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(sunX,sunY,150,0,7); ctx.fill();
+  ctx.fillStyle='#FFE9B0'; ctx.beginPath(); ctx.arc(sunX,sunY,34,0,7); ctx.fill();
+
+  ctx.fillStyle='rgba(31,56,100,.55)';
+  const m1=scrollX*0.12;
+  ctx.beginPath(); ctx.moveTo(0,H*0.62);
+  for(let x=-200;x<W+200;x+=140){ const px=x-(m1%140); ctx.lineTo(px, H*0.62 - (Math.sin((x+m1)*0.01)*0.5+0.5)*90 - 30); }
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.fill();
+
+  drawForest(0.32, 'rgba(11,61,46,.55)', H*0.60, 70);
+  const riverY=H*0.70;
+  ctx.fillStyle='rgba(120,190,220,.30)'; ctx.fillRect(0,riverY,W,H*0.10);
+  ctx.fillStyle='rgba(255,220,150,.12)';
+  for(let i=0;i<6;i++){ const rx=(i*220 - scrollX*0.5)%(W+220); ctx.fillRect(rx<0?rx+W+220:rx, riverY+8+i*4, 60,3); }
+  drawForest(0.55, 'rgba(9,48,36,.9)', H*0.66, 110);
+}
+function drawForest(par, color, baseY, treeH){
+  ctx.fillStyle=color;
+  const off = (scrollX*par)%160;
+  for(let x=-160; x<W+160; x+=80){
+    const wx = x - off;
+    const seed = Math.floor((x+Math.floor(scrollX*par/80)*80));
+    const h = treeH*(0.7+ (Math.abs(Math.sin(seed*12.9898))%1)*0.6);
+    const w = 26 + (Math.abs(Math.cos(seed*4.1))%1)*16;
+    ctx.beginPath();
+    ctx.moveTo(wx, baseY-h);
+    ctx.lineTo(wx-w, baseY);
+    ctx.lineTo(wx+w, baseY);
+    ctx.closePath(); ctx.fill();
+    ctx.fillRect(wx-3, baseY, 6, 14);
+  }
+}
+
+function drawGround(){
+  ctx.fillStyle='#6b4a2b'; ctx.fillRect(0,GROUND,W,H-GROUND);
+  const gg=ctx.createLinearGradient(0,GROUND,0,GROUND+40);
+  gg.addColorStop(0,'#8a6236'); gg.addColorStop(1,'#5a3d22');
+  ctx.fillStyle=gg; ctx.fillRect(0,GROUND,W,44);
+  ctx.fillStyle='#1E8A5B'; ctx.fillRect(0,GROUND-6,W,10);
+  ctx.fillStyle='#166b47';
+  for(let x=-groundOffset; x<W; x+=18){ ctx.fillRect(x,GROUND-8,3,8); }
+  ctx.fillStyle='rgba(0,0,0,.18)';
+  for(let x=-(scrollX%120); x<W; x+=120){ ctx.beginPath(); ctx.arc(x+40,GROUND+28,4,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(x+90,GROUND+40,3,0,7); ctx.fill(); }
+}
+
+function drawObstacle(o){
+  const x=o.x-scrollX, top=GROUND-o.h;
+  if(o.kind==='log'){
+    ctx.fillStyle='#5a3b1e'; roundRect(x,GROUND-o.h,o.w,o.h,8); ctx.fill();
+    ctx.fillStyle='#7a5330'; ctx.beginPath(); ctx.ellipse(x+o.w,GROUND-o.h/2,7,o.h/2,0,0,7); ctx.fill();
+    ctx.strokeStyle='#3d2712'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(x+o.w,GROUND-o.h/2,4,o.h/2-4,0,0,7); ctx.stroke();
+  } else if(o.kind==='rock'){
+    ctx.fillStyle='#556069'; ctx.beginPath();
+    ctx.moveTo(x,GROUND); ctx.lineTo(x+8,top+6); ctx.lineTo(x+o.w*0.5,top); ctx.lineTo(x+o.w-8,top+8); ctx.lineTo(x+o.w,GROUND); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#6b7680'; ctx.beginPath(); ctx.moveTo(x+8,top+6); ctx.lineTo(x+o.w*0.5,top); ctx.lineTo(x+o.w*0.5,GROUND); ctx.lineTo(x+6,GROUND); ctx.closePath(); ctx.fill();
+  } else {
+    ctx.fillStyle='rgba(70,150,190,.75)'; roundRect(x,GROUND-6,o.w,10,5); ctx.fill();
+    ctx.fillStyle='rgba(190,235,255,.5)'; roundRect(x+8,GROUND-4,o.w-16,3,2); ctx.fill();
+  }
+}
+
+function drawOrb(o){
+  const x=o.x-scrollX, y=o.y + Math.sin(performance.now()*0.004+o.ph)*4;
+  const gr=ctx.createRadialGradient(x,y,1,x,y,14);
+  gr.addColorStop(0,'#FFF3CC'); gr.addColorStop(0.5,'#F2A900'); gr.addColorStop(1,'rgba(242,169,0,0)');
+  ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(x,y,14,0,7); ctx.fill();
+  ctx.fillStyle='#fff8e0'; ctx.beginPath(); ctx.arc(x,y,4,0,7); ctx.fill();
+}
+
+function drawStationPost(i){
+  const sx = stationWorldX(i)-scrollX;
+  if(sx<-60||sx>W+60) return;
+  const done = i<stationIdx;
+  const s=STATIONS[i];
+  ctx.fillStyle= done? '#1E8A5B' : '#1F3864';
+  roundRect(sx-6, GROUND-150, 12, 150, 4); ctx.fill();
+  ctx.save();
+  ctx.translate(sx, GROUND-150);
+  const pw=86, ph=64;
+  ctx.fillStyle= done? '#166b47' : '#132445';
+  roundRect(-pw/2, -ph, pw, ph, 12); ctx.fill();
+  ctx.strokeStyle='#F2A900'; ctx.lineWidth=2.5; roundRect(-pw/2,-ph,pw,ph,12); ctx.stroke();
+  ctx.font='30px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.ico, 0, -ph+26);
+  ctx.fillStyle='#FFD46B'; ctx.font='700 13px "Bricolage Grotesque",sans-serif';
+  ctx.fillText(done? '✓ ' + (i+1) : 'Nº '+(i+1), 0, -14);
+  ctx.restore();
+  if(!done){
+    ctx.fillStyle='rgba(242,169,0,.9)';
+    const fl=Math.sin(performance.now()*0.006+i)*3;
+    ctx.beginPath(); ctx.moveTo(sx+6,GROUND-150); ctx.lineTo(sx+30,GROUND-146+fl); ctx.lineTo(sx+6,GROUND-138); ctx.fill();
+  }
+}
+
+function drawFinish(){
+  const fx = FINISH_X()-scrollX;
+  if(fx<-40||fx>W+120) return;
+  ctx.fillStyle='#1F3864'; ctx.fillRect(fx-4,GROUND-170,8,170); ctx.fillRect(fx+120,GROUND-170,8,170);
+  ctx.fillStyle='#F2A900'; roundRect(fx-14,GROUND-186,152,26,6); ctx.fill();
+  ctx.fillStyle='#132445'; ctx.font='700 14px "Bricolage Grotesque",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🏆 CHEGADA', fx+60, GROUND-173);
+  ctx.save();
+  for(let r=0;r<9;r++) for(let cc=0;cc<7;cc++){ ctx.fillStyle=(r+cc)%2? '#132445':'#fff'; ctx.fillRect(fx+cc*18, GROUND-158+r*18, 18,18); }
+  ctx.restore();
+}
+
+/* ---------- Personagens ----------
+   Dois jovens exploradores: F (exploradora, cabelo comprido com rabo
+   de cavalo) e M (explorador, cabelo curto + boné). Ambos com o look
+   institucional navy + dourado.                                      */
+let selectedChar = 'F';
+const CHARS = {
+  F: { skin:'#e8b98f', hair:'#4a2c17', shirt:'#1F3864', trim:'#EAF0FA', hat:'#F2A900', pants:'#0B3D2E' },
+  M: { skin:'#c98e62', hair:'#20140b', shirt:'#1F3864', trim:'#EAF0FA', hat:'#F2A900', pants:'#0B3D2E' }
+};
+
+/* Desenha o personagem em qualquer contexto (jogo ou preview).
+   g = contexto 2d, ox/oy = canto sup. esq., h = altura do corpo,
+   variant = 'F'|'M', runPh = fase da corrida, airborne, groundY.   */
+function drawCharacter(g, variant, ox, oy, h, runPh, airborne, groundY){
+  const C = CHARS[variant];
+  const w = 34;
+  const cx = ox + w/2;
+  const legPhase = Math.sin(runPh);
+  const legPhase2 = Math.sin(runPh + Math.PI);
+  const hipY = oy + h - 18;
+
+  // rabo de cavalo (exploradora) — atrás do corpo, balançando
+  if(variant==='F'){
+    g.strokeStyle=C.hair; g.lineWidth=8; g.lineCap='round';
+    const sway = airborne ? 10 : Math.sin(runPh*0.9)*5;
+    g.beginPath();
+    g.moveTo(cx-6, oy+4);
+    g.quadraticCurveTo(cx-22, oy+10+sway, cx-20, oy+30+sway*0.6);
+    g.stroke();
+    g.fillStyle=C.hair; g.beginPath(); g.arc(cx-20, oy+31+sway*0.6, 5, 0, 7); g.fill();
+  }
+
+  // pernas
+  g.strokeStyle=C.pants; g.lineWidth=7; g.lineCap='round';
+  g.beginPath(); g.moveTo(cx,hipY);
+  if(airborne){ g.lineTo(cx-8, oy+h); } else { g.lineTo(cx+legPhase*10, groundY + (legPhase>0?0:2)); }
+  g.stroke();
+  g.beginPath(); g.moveTo(cx,hipY);
+  if(airborne){ g.lineTo(cx+9, oy+h-4); } else { g.lineTo(cx+legPhase2*10, groundY + (legPhase2>0?0:2)); }
+  g.stroke();
+
+  // corpo/jaleco
+  g.fillStyle=C.shirt; roundRectG(g, cx-13, oy+16, 26, h-30, 8); g.fill();
+  g.fillStyle=C.trim; roundRectG(g, cx-13, oy+16, 10, h-30, 6); g.fill();
+  g.fillStyle=C.hat; g.fillRect(cx-3, oy+22, 3, 3); g.fillRect(cx-3, oy+30, 3, 3);
+
+  // braço
+  g.strokeStyle=C.shirt; g.lineWidth=6;
+  g.beginPath(); g.moveTo(cx+6, oy+24);
+  const armSw = airborne ? -12 : legPhase2*12;
+  g.lineTo(cx+6+armSw, oy+40); g.stroke();
+
+  // cabeça
+  g.fillStyle=C.skin; g.beginPath(); g.arc(cx, oy+8, 11, 0, 7); g.fill();
+
+  if(variant==='F'){
+    // franja + chapéu de exploradora
+    g.fillStyle=C.hair; g.beginPath(); g.arc(cx, oy+4, 11, Math.PI, 0); g.fill();
+    g.fillStyle=C.hat; g.beginPath(); g.ellipse(cx, oy+1, 17, 5, 0, 0, 7); g.fill();
+    roundRectG(g, cx-9, oy-9, 18, 10, 4); g.fill();
+    g.fillStyle=C.pants; g.fillRect(cx-9, oy-2, 18, 3);
+  } else {
+    // cabelo curto + boné com aba para frente
+    g.fillStyle=C.hair; g.beginPath(); g.arc(cx, oy+5, 11, Math.PI, 0); g.fill();
+    g.fillStyle=C.hat;
+    g.beginPath(); g.arc(cx, oy+2, 11, Math.PI, 0); g.fill();
+    roundRectG(g, cx, oy-1, 17, 5, 2); g.fill();   // aba
+    g.fillStyle=C.pants; g.fillRect(cx-11, oy+1, 22, 3);
+  }
+}
+function roundRectG(g,x,y,w,h,r){
+  if(w<2*r)r=w/2; if(h<2*r)r=h/2;
+  g.beginPath();
+  g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
+  g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
+}
+
+function drawPlayer(){
+  ctx.save();
+  if(hitFlash>0 && Math.floor(hitFlash/4)%2===0) ctx.globalAlpha=0.4;
+  ctx.fillStyle='rgba(0,0,0,.22)';
+  const sq = player.onGround?1:0.6;
+  ctx.beginPath(); ctx.ellipse(player.x+player.w/2, GROUND+2, 22*sq, 6, 0,0,7); ctx.fill();
+  drawCharacter(ctx, selectedChar, player.x, player.y, player.h, player.run, !player.onGround, GROUND);
+  ctx.restore();
+}
+
+/* Previews animados dos personagens na tela inicial */
+function renderPreviews(t){
+  [['prevF','F'],['prevM','M']].forEach(([id,v])=>{
+    const pc = document.getElementById(id);
+    if(!pc) return;
+    const g = pc.getContext('2d');
+    g.setTransform(2,0,0,2,0,0);          // canvas 128x176 → lógico 64x88
+    g.clearRect(0,0,64,88);
+    const runPh = t*0.008;
+    drawCharacter(g, v, 15, 14, 60, runPh, false, 78);
+  });
+}
+
+/* vagalumes */
+let fireflies=[];
+function initFireflies(){ fireflies=[]; for(let i=0;i<26;i++) fireflies.push({x:Math.random()*W,y:Math.random()*H*0.7,ph:Math.random()*6.28,sp:0.3+Math.random()*0.6}); }
+initFireflies();
+function drawFireflies(){
+  for(const f of fireflies){
+    f.ph+=0.02*f.sp; const a=(Math.sin(f.ph)*0.5+0.5)*0.6;
+    const fx=(f.x - scrollX*0.15*f.sp)%W; const rx=fx<0?fx+W:fx;
+    ctx.fillStyle='rgba(255,220,140,'+a.toFixed(2)+')';
+    ctx.beginPath(); ctx.arc(rx, f.y+Math.sin(f.ph*1.3)*10, 2, 0,7); ctx.fill();
+  }
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawParallax();
+  drawFireflies();
+  drawGround();
+  if(state!=='start'){
+    for(let i=0;i<TOTAL;i++) drawStationPost(i);
+    drawFinish();
+    obstacles.forEach(drawObstacle);
+    orbs.forEach(o=>{ if(!o.got) drawOrb(o); });
+    drawPlayer();
+    for(const p of particles){ ctx.globalAlpha=Math.max(0,p.life/26); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+    ctx.globalAlpha=1;
+    if(hitFlash>0){ ctx.fillStyle='rgba(255,60,60,'+(hitFlash/42*0.28)+')'; ctx.fillRect(0,0,W,H); }
+  } else {
+    renderPreviews(performance.now());
+  }
+  if(confetti.length){ updateConfetti(); }
+}
+
+/* ---------- Confetti ---------- */
+let confetti=[];
+function launchConfetti(){
+  confetti=[];
+  const cols=['#F2A900','#FFD46B','#1E8A5B','#2e86de','#fff','#c0559f'];
+  for(let i=0;i<160;i++) confetti.push({x:Math.random()*W, y:-20-Math.random()*H, vx:(Math.random()-0.5)*2, vy:2+Math.random()*3, r:3+Math.random()*4, c:cols[i%cols.length], rot:Math.random()*6, vr:(Math.random()-0.5)*0.3, life:260});
+}
+function updateConfetti(){
+  for(const p of confetti){ p.x+=p.vx; p.y+=p.vy; p.vy+=0.03; p.rot+=p.vr; p.life--; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*1.6); ctx.restore(); }
+  confetti=confetti.filter(p=>p.life>0 && p.y<H+30);
+}
+
+/* ---------- Formulário ---------- */
+// popular os selects de curso
+(function(){
+  const c1=document.getElementById('inC1'), c2=document.getElementById('inC2');
+  COURSE_LIST.forEach(n=>{
+    c1.insertAdjacentHTML('beforeend', '<option>'+n+'</option>');
+    c2.insertAdjacentHTML('beforeend', '<option>'+n+'</option>');
+  });
+})();
+// máscara simples de WhatsApp
+document.getElementById('inZap').addEventListener('input', e=>{
+  let d = e.target.value.replace(/\D/g,'').slice(0,11);
+  let out = d;
+  if(d.length>2) out = '('+d.slice(0,2)+') '+d.slice(2);
+  if(d.length>7) out = '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
+  e.target.value = out;
+});
+// seleção de personagem
+function selectChar(v){
+  selectedChar = v;
+  document.getElementById('charF').classList.toggle('sel', v==='F');
+  document.getElementById('charM').classList.toggle('sel', v==='M');
+}
+document.getElementById('charF').onclick = ()=>selectChar('F');
+document.getElementById('charM').onclick = ()=>selectChar('M');
+document.getElementById('charF').onkeydown = e=>{ if(e.key==='Enter'||e.key===' ') selectChar('F'); };
+document.getElementById('charM').onkeydown = e=>{ if(e.key==='Enter'||e.key===' ') selectChar('M'); };
+selectChar('F');
+
+function validateForm(){
+  const nome = document.getElementById('inNome').value.trim().replace(/\s+/g,' ');
+  const zapD = document.getElementById('inZap').value.replace(/\D/g,'');
+  const c1 = document.getElementById('inC1').value;
+  const c2 = document.getElementById('inC2').value;
+  const msg = document.getElementById('formMsg');
+  const mark = (id,bad)=>document.getElementById(id).classList.toggle('err',bad);
+  let err = '';
+
+  const nomeOk = nome.length >= 2;
+  mark('fNome', !nomeOk);
+  if(!nomeOk) err = 'Preencha seu nome para começar.';
+
+  const zapOk = zapD.length>=10 && zapD.length<=11;
+  mark('fZap', !zapOk);
+  if(!zapOk && !err) err = 'Digite um WhatsApp válido com DDD. Ex.: (69) 99999-9999';
+
+  mark('fC1', !c1);
+  if(!c1 && !err) err = 'Escolha seu 1º curso de interesse.';
+
+  const c2ok = c2 && c2!==c1;
+  mark('fC2', !c2ok);
+  if(!c2 && !err) err = 'Escolha seu 2º curso de interesse.';
+  else if(c2===c1 && !err) err = 'O 2º curso deve ser diferente do 1º.';
+
+  if(err){ msg.textContent = '⚠️ '+err; msg.classList.add('show'); return null; }
+  msg.classList.remove('show');
+  return { nome, zap: document.getElementById('inZap').value, c1, c2, char:selectedChar };
+}
+
+/* ---------- Botões ---------- */
+function startGame(){
+  const data = validateForm();
+  if(!data) return;
+  lead = data;
+  document.getElementById('start').classList.remove('on');
+  document.getElementById('hud').classList.add('on');
+  document.getElementById('bottomHint').textContent = "Toque / Espaço para pular";
+  resetGame(false);
+  sendLead("Iniciou o jogo");
+  state='run';
+}
+document.getElementById('startBtn').onclick=()=>{ initAudio(); startGame(); };
+
+document.getElementById('retryBtn').onclick=()=>{ initAudio(); document.getElementById('over').classList.remove('on'); resetGame(true); state='run'; };
+document.getElementById('restartBtn').onclick=()=>{ initAudio(); document.getElementById('over').classList.remove('on'); lastCheckpointIdx=0; resetGame(false); state='run'; };
+document.getElementById('playAgain').onclick=()=>{
+  initAudio(); confetti=[];
+  document.getElementById('win').classList.remove('on');
+  document.getElementById('hud').classList.remove('on');
+  document.getElementById('start').classList.add('on');   // novo jogador → novo cadastro
+  lastCheckpointIdx=0; lead=null; state='start';
+  // limpa o formulário para o próximo visitante do stand
+  document.getElementById('inNome').value='';
+  document.getElementById('inZap').value='';
+  document.getElementById('inC1').value='';
+  document.getElementById('inC2').value='';
+};
+
+document.getElementById('muteBtn').onclick=()=>{ muted=!muted; document.getElementById('muteBtn').textContent=muted?'🔇':'🔊'; };
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
