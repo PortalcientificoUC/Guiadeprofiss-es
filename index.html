@@ -114,6 +114,18 @@
   .char-card .cs{font-size:.64rem; opacity:.7}
   .char-card.sel .cn{color:var(--gold-soft)}
 
+  /* ---------- Seleção de dificuldade ---------- */
+  .diff-row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px}
+  .diff{cursor:pointer; background:rgba(11,36,69,.55); border:2px solid rgba(242,169,0,.35);
+       border-radius:14px; padding:10px 6px; text-align:center; transition:all .18s}
+  .diff:hover{border-color:rgba(242,169,0,.7)}
+  .diff .di{font-size:1.25rem; line-height:1}
+  .diff .dn{font-family:var(--display); font-weight:700; font-size:.82rem; margin-top:3px}
+  .diff .dd{font-size:.58rem; opacity:.7; margin-top:2px; line-height:1.3}
+  .diff.sel{border-color:var(--gold); background:rgba(242,169,0,.16);
+       box-shadow:0 0 0 3px rgba(242,169,0,.22); transform:translateY(-2px)}
+  .diff.sel .dn{color:var(--gold-soft)}
+
   .contact-strip{margin-top:16px; padding:10px 14px; background:rgba(11,36,69,.5);
        border:1px solid rgba(242,169,0,.3); border-radius:12px; font-size:.78rem; line-height:1.5}
   .contact-strip b{color:var(--gold-soft)}
@@ -264,6 +276,24 @@
               <canvas id="prevM" width="128" height="176"></canvas>
               <div class="cn">Jovem Explorador</div>
               <div class="cs">Rápido e corajoso</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="char-label">Escolha o nível *</div>
+          <div class="diff-row">
+            <div class="diff" id="diffF" role="button" tabindex="0">
+              <div class="di">🌿</div><div class="dn">Fácil</div>
+              <div class="dd">Ritmo tranquilo</div>
+            </div>
+            <div class="diff" id="diffM" role="button" tabindex="0">
+              <div class="di">🌊</div><div class="dn">Moderado</div>
+              <div class="dd">Araras e pedras rolando</div>
+            </div>
+            <div class="diff" id="diffD" role="button" tabindex="0">
+              <div class="di">🔥</div><div class="dn">Difícil</div>
+              <div class="dd">Selva a toda velocidade</div>
             </div>
           </div>
         </div>
@@ -451,7 +481,19 @@ const STATIONS = [
     fb:"UNINASSAU CACOAL! 🎉 Com clínicas-escola, laboratórios de ponta e professores mestres e doutores, aqui você EVOLUI de verdade. O campus te espera — corra para a chegada e receba seu troféu!" }
 ];
 const TOTAL = STATIONS.length;
-const COURSE_LIST = ["Fisioterapia", ...STATIONS.map(s=>s.name).filter(n=>n!=="Fisioterapia")];
+const COURSE_LIST = ["Fisioterapia", ...STATIONS.filter(s=>!s.promo && s.name!=="Fisioterapia").map(s=>s.name)];
+
+/* ---------- Níveis de dificuldade ----------
+   base: velocidade inicial · ramp: ganho por estação · maxRamp: teto
+   gapMin/gapVar: espaçamento entre obstáculos · movers: chance de
+   obstáculo MÓVEL (arara voando / pedra rolando) · moverSpd: veloc. extra */
+const DIFFS = {
+  F: { label:"Fácil",    base:3.8, ramp:0.12, maxRamp:2.0, gapMin:470, gapVar:380, movers:0.00, moverSpd:0   },
+  M: { label:"Moderado", base:4.6, ramp:0.20, maxRamp:3.2, gapMin:400, gapVar:340, movers:0.28, moverSpd:1.6 },
+  D: { label:"Difícil",  base:5.5, ramp:0.28, maxRamp:4.4, gapMin:340, gapVar:290, movers:0.50, moverSpd:2.6 }
+};
+let selectedDiff = 'M';
+function DIFF(){ return DIFFS[selectedDiff]; }
 
 /* ---------- Lead / cadastro ---------- */
 let lead = null;                 // {nome, zap, c1, c2, char}
@@ -465,7 +507,7 @@ function sendLead(status){
     curso1: lead.c1, curso2: lead.c2,
     personagem: lead.char==='F' ? 'Jovem Exploradora' : 'Jovem Explorador',
     pontuacao: String(score||0), acertos: String(correctCount||0)+"/"+TOTAL,
-    status
+    status: status + " · Nível " + DIFF().label
   };
   sessionLeads.push(rec);
   if(CONFIG.WEBHOOK_URL){
@@ -548,14 +590,26 @@ function resetGame(fromCheckpoint){
 
 /* ---------- Geração procedural ---------- */
 function spawnField(){
+  const D = DIFF();
   const viewEnd = scrollX + W + 900;
   const near = wx => { for(let i=0;i<TOTAL;i++){ if(Math.abs(stationWorldX(i)-wx)<190) return true; } return false; };
   while(nextObsX < viewEnd){
     if(!near(nextObsX) && nextObsX < FINISH_X()-200){
-      const kind = Math.random()<0.5 ? 'log' : (Math.random()<0.5?'rock':'water');
-      obstacles.push({ x:nextObsX, kind, w: kind==='water'?70:44, h: kind==='log'?34:40, passed:false });
+      if(Math.random() < D.movers){
+        // obstáculo MÓVEL: arara voando ou pedra rolando (vêm na direção do jogador)
+        if(Math.random()<0.5){
+          obstacles.push({ x:nextObsX, kind:'fly', w:46, h:26, passed:false,
+                           vx:D.moverSpd, baseY:GROUND-58, amp:26, ph:Math.random()*6.28, wing:0 });
+        } else {
+          obstacles.push({ x:nextObsX, kind:'roll', w:38, h:38, passed:false,
+                           vx:D.moverSpd, rot:0 });
+        }
+      } else {
+        const kind = Math.random()<0.5 ? 'log' : (Math.random()<0.5?'rock':'water');
+        obstacles.push({ x:nextObsX, kind, w: kind==='water'?70:44, h: kind==='log'?34:40, passed:false });
+      }
     }
-    nextObsX += 380 + Math.random()*360 - Math.min(140, speed*14);
+    nextObsX += D.gapMin + Math.random()*D.gapVar - Math.min(140, speed*14);
   }
   while(nextOrbX < viewEnd){
     if(!near(nextOrbX) && nextOrbX < FINISH_X()-100){
@@ -568,7 +622,7 @@ function spawnField(){
     }
     nextOrbX += 260 + Math.random()*240;
   }
-  obstacles = obstacles.filter(o=> o.x - scrollX > -120);
+  obstacles = obstacles.filter(o=> o.x - scrollX > -160);
   orbs = orbs.filter(o=> o.x - scrollX > -80 && !o.got);
 }
 
@@ -597,7 +651,8 @@ function loop(now){
 }
 
 function update(dt){
-  speed = baseSpeed + Math.min(3.2, stationIdx*0.18);
+  const D = DIFF();
+  speed = D.base + Math.min(D.maxRamp, stationIdx*D.ramp);
   const mv = speed*dt;
   scrollX += mv;
   groundOffset = (groundOffset + mv) % 80;
@@ -610,7 +665,22 @@ function update(dt){
 
   const px=player.x, pw=player.w, py=player.y, ph=player.h;
   for(const o of obstacles){
+    // obstáculos móveis avançam contra o jogador
+    if(o.vx){ o.x -= o.vx*dt; }
+    if(o.kind==='fly'){
+      o.ph += 0.05*dt;
+      o.curY = o.baseY + Math.sin(o.ph)*o.amp;   // arara sobe e desce
+      o.wing += 0.28*dt;
+    }
+    if(o.kind==='roll'){ o.rot += (speed+(o.vx||0))*dt*0.06; }
+
     const ox = o.x - scrollX;
+    if(o.kind==='fly'){
+      if(!o.passed && ox < px+pw && ox+o.w > px &&
+         o.curY < py+ph && o.curY+o.h > py){ hitPlayer(o); }
+      if(!o.passed && ox+o.w < px-10){ o.passed=true; }
+      continue;
+    }
     if(ox < px+pw && ox+o.w > px){
       const otop = GROUND - o.h;
       if(o.kind==='water'){
@@ -800,6 +870,39 @@ function drawObstacle(o){
     ctx.fillStyle='#556069'; ctx.beginPath();
     ctx.moveTo(x,GROUND); ctx.lineTo(x+8,top+6); ctx.lineTo(x+o.w*0.5,top); ctx.lineTo(x+o.w-8,top+8); ctx.lineTo(x+o.w,GROUND); ctx.closePath(); ctx.fill();
     ctx.fillStyle='#6b7680'; ctx.beginPath(); ctx.moveTo(x+8,top+6); ctx.lineTo(x+o.w*0.5,top); ctx.lineTo(x+o.w*0.5,GROUND); ctx.lineTo(x+6,GROUND); ctx.closePath(); ctx.fill();
+  } else if(o.kind==='roll'){
+    // pedra rolando na direção do jogador
+    const r=o.w/2, cx2=x+r, cy2=GROUND-r;
+    ctx.save(); ctx.translate(cx2,cy2); ctx.rotate(o.rot||0);
+    ctx.fillStyle='#5c666f'; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill();
+    ctx.fillStyle='#6f7b85'; ctx.beginPath(); ctx.arc(-r*0.25,-r*0.25,r*0.55,0,7); ctx.fill();
+    ctx.fillStyle='#49525a';
+    ctx.beginPath(); ctx.arc(r*0.35,r*0.1,r*0.16,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(-r*0.1,r*0.4,r*0.12,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-r*0.5,r*0.10,0,7); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle='rgba(180,150,110,.35)';
+    ctx.beginPath(); ctx.arc(x+o.w+8, GROUND-5, 5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+o.w+16, GROUND-3, 3, 0, 7); ctx.fill();
+  } else if(o.kind==='fly'){
+    // arara vermelha da Amazônia, voando contra o jogador
+    const fy = o.curY!==undefined ? o.curY : o.baseY;
+    const flap = Math.sin(o.wing||0)*10;
+    ctx.save(); ctx.translate(x+o.w/2, fy+o.h/2);
+    ctx.fillStyle='#c0392b';
+    ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(30,-4); ctx.lineTo(30,5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#e74c3c';
+    ctx.beginPath(); ctx.ellipse(0,0,14,9,0,0,7); ctx.fill();
+    ctx.fillStyle='#2e86de';
+    ctx.beginPath(); ctx.moveTo(-2,-2); ctx.quadraticCurveTo(8,-14-flap,18,-6-flap); ctx.quadraticCurveTo(8,-2,-2,-2); ctx.fill();
+    ctx.fillStyle='#f1c40f';
+    ctx.beginPath(); ctx.moveTo(0,1); ctx.quadraticCurveTo(9,8+flap*0.5,17,4+flap*0.4); ctx.quadraticCurveTo(8,3,0,1); ctx.fill();
+    ctx.fillStyle='#e74c3c'; ctx.beginPath(); ctx.arc(-13,-3,6,0,7); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-15,-4,2.6,0,7); ctx.fill();
+    ctx.fillStyle='#132445'; ctx.beginPath(); ctx.arc(-15.5,-4,1.2,0,7); ctx.fill();
+    ctx.fillStyle='#2c3e50';
+    ctx.beginPath(); ctx.moveTo(-18,-5); ctx.quadraticCurveTo(-24,-3,-19,1); ctx.closePath(); ctx.fill();
+    ctx.restore();
   } else {
     ctx.fillStyle='rgba(70,150,190,.75)'; roundRect(x,GROUND-6,o.w,10,5); ctx.fill();
     ctx.fillStyle='rgba(190,235,255,.5)'; roundRect(x+8,GROUND-4,o.w-16,3,2); ctx.fill();
@@ -1126,6 +1229,20 @@ document.getElementById('charM').onclick = ()=>selectChar('M');
 document.getElementById('charF').onkeydown = e=>{ if(e.key==='Enter'||e.key===' ') selectChar('F'); };
 document.getElementById('charM').onkeydown = e=>{ if(e.key==='Enter'||e.key===' ') selectChar('M'); };
 selectChar('F');
+
+// seleção de dificuldade
+function selectDiff(v){
+  selectedDiff = v;
+  document.getElementById('diffF').classList.toggle('sel', v==='F');
+  document.getElementById('diffM').classList.toggle('sel', v==='M');
+  document.getElementById('diffD').classList.toggle('sel', v==='D');
+}
+['F','M','D'].forEach(v=>{
+  const el=document.getElementById('diff'+v);
+  el.onclick=()=>selectDiff(v);
+  el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' ') selectDiff(v); };
+});
+selectDiff('M');
 
 function validateForm(){
   const nome = document.getElementById('inNome').value.trim().replace(/\s+/g,' ');
