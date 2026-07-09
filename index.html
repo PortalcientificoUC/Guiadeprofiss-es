@@ -340,7 +340,8 @@
           <b>Seu presente de campeão(ã)!</b>
           Acesso exclusivo ao <b>Guia de Profissões — UNINASSAU Cacoal 2026</b>, o atlas completo das 14 carreiras.
         </div>
-        <a class="cta gift-btn" href="https://gamma.app/docs/Atlas-de-Profissoes-wrydjta0ltjg05g" target="_blank" rel="noopener">📖 Abrir meu Guia de Profissões ▸</a>
+        <a class="cta gift-btn" href="guia-de-profissoes-uninassau-cacoal.pdf" target="_blank" rel="noopener">📖 Abrir o Guia em PDF (rápido) ▸</a>
+        <a href="https://gamma.app/docs/Atlas-de-Profissoes-wrydjta0ltjg05g" target="_blank" rel="noopener" style="font-size:.74rem; color:var(--gold-soft); opacity:.85; text-decoration:underline">ou ver a versão interativa online</a>
       </div>
       <div class="cta-row">
         <a class="cta wa" id="waBtn" href="https://wa.me/5569999058972?text=Ol%C3%A1%20Erika!%20Conclu%C3%AD%20a%20Trilha%20do%20Sucesso%20da%20UNINASSAU%20Cacoal%20e%20quero%20saber%20mais%20sobre%20matr%C3%ADculas!" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block">💬 Falar com a Erika (matrículas)</a>
@@ -358,8 +359,7 @@
    entre as aspas retas " " (não use aspas curvas “ ”).
    Este bloco é isolado: mesmo se der erro aqui, o jogo funciona.
    ══════════════════════════════════════════════════════════════ */
-window.WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwlB2CxCsY4PM4P-OgcJMeuRCd-Rl3_f37YrS-US-OZ7ejZB28Z11NAgNW-4JOzebLE/exec
-";   // ← COLE A URL AQUI ENTRE AS ASPAS
+window.WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwXftE0DquyRDbIiP7M58w2xafaBq7WaW1D8_pDuI_illVNYc--wNDn3POgSfR3fw/exec";   // ← COLE A URL AQUI ENTRE AS ASPAS
 </script>
 <script>
 "use strict";
@@ -443,7 +443,12 @@ const STATIONS = [
     what:"Projeta casas, prédios e cidades — unindo arte, técnica e sustentabilidade.",
     q:"Quem desenha o projeto de casas e prédios antes de eles serem construídos?",
     opts:["O veterinário","O enfermeiro","O arquiteto"], correct:2,
-    fb:"Isso mesmo! Na UNINASSAU Cacoal você projeta desde cedo, nos ateliês com tecnologia BIM, pensando nas cidades da Amazônia." }
+    fb:"Isso mesmo! Na UNINASSAU Cacoal você projeta desde cedo, nos ateliês com tecnologia BIM, pensando nas cidades da Amazônia." },
+  { name:"A Grande Conquista", ico:"🎓", eixo:"SEU FUTURO · ESTAÇÃO FINAL", reg:"O último desafio antes do troféu", accent:"#F2A900", promo:true, noPre:true,
+    what:"Você atravessou as 14 estações de carreira. Agora, a pergunta que abre o portão da chegada:",
+    q:"Qual universidade faz com que você EVOLUA para conquistar?",
+    opts:["UNINASSAU Cacoal 🦁","Qualquer uma, tanto faz","Nenhuma, o sucesso vem sozinho"], correct:0,
+    fb:"UNINASSAU CACOAL! 🎉 Com clínicas-escola, laboratórios de ponta e professores mestres e doutores, aqui você EVOLUI de verdade. O campus te espera — corra para a chegada e receba seu troféu!" }
 ];
 const TOTAL = STATIONS.length;
 const COURSE_LIST = ["Fisioterapia", ...STATIONS.map(s=>s.name).filter(n=>n!=="Fisioterapia")];
@@ -652,7 +657,7 @@ function openStation(i){
   document.getElementById('cardTag').textContent = s.eixo + " · ESTAÇÃO " + String(i+1).padStart(2,'0');
   document.getElementById('cardIco').textContent = s.ico;
   document.getElementById('cardName').textContent = s.name;
-  document.getElementById('cardReg').textContent = "Bacharelado · " + s.reg;
+  document.getElementById('cardReg').textContent = (s.noPre ? "" : "Bacharelado · ") + s.reg;
   document.getElementById('cardWhat').textContent = s.what;
   document.getElementById('cardQ').textContent = s.q;
   document.getElementById('cardTop').style.background =
@@ -834,9 +839,109 @@ function drawStationPost(i){
   }
 }
 
+/* ---------- Campus UNINASSAU na chegada (inspirado na fachada real:
+   estrutura vinho, vidro azul espelhado, letreiro branco, brasão,
+   escadaria de entrada) ---------- */
+function drawCampus(fx){
+  const bw = 380, bh = 240;
+  const bx = fx - (bw-128)/2;          // centraliza atrás do arco de chegada
+  const by = GROUND - bh;
+  const WINE='#7e1e2b', WINE_D='#5c141f', GLASS='#2b5f8f', GLASS_L='#4d86b5', GLASS_HL='#7fb2d9';
+
+  ctx.save();
+
+  // corpo de vidro
+  const gg = ctx.createLinearGradient(bx, by, bx, GROUND);
+  gg.addColorStop(0, GLASS_L); gg.addColorStop(0.5, GLASS); gg.addColorStop(1, '#1e4568');
+  ctx.fillStyle = gg;
+  ctx.fillRect(bx+16, by+22, bw-32, bh-22);
+
+  // reflexo diagonal no vidro
+  ctx.fillStyle='rgba(255,255,255,.10)';
+  ctx.beginPath();
+  ctx.moveTo(bx+40, by+22); ctx.lineTo(bx+110, by+22);
+  ctx.lineTo(bx+250, GROUND); ctx.lineTo(bx+180, GROUND); ctx.closePath(); ctx.fill();
+
+  // grade de janelas
+  ctx.strokeStyle='rgba(15,40,70,.45)'; ctx.lineWidth=1.5;
+  for(let gy=by+42; gy<GROUND-8; gy+=26){ ctx.beginPath(); ctx.moveTo(bx+16,gy); ctx.lineTo(bx+bw-16,gy); ctx.stroke(); }
+  for(let gx=bx+44; gx<bx+bw-16; gx+=34){ ctx.beginPath(); ctx.moveTo(gx,by+22); ctx.lineTo(gx,GROUND-6); ctx.stroke(); }
+  ctx.fillStyle=GLASS_HL;
+  [[bx+52,by+52],[bx+120,by+52],[bx+256,by+52],[bx+52,by+150],[bx+290,by+150]].forEach(([wx,wy])=>{
+    ctx.fillRect(wx, wy, 30, 12);
+  });
+
+  // molduras vinho
+  ctx.fillStyle=WINE;
+  ctx.fillRect(bx, by, bw, 24);
+  ctx.fillRect(bx, by, 18, bh);
+  ctx.fillRect(bx+bw-18, by, 18, bh);
+  ctx.fillStyle=WINE_D;
+  ctx.fillRect(bx, by+24, bw, 5);
+  ctx.fillRect(bx+18, GROUND-8, bw-36, 8);
+
+  // pórtico da entrada
+  const doorW=96, doorX=bx+(bw-doorW)/2;
+  ctx.fillStyle=WINE;
+  ctx.fillRect(doorX-14, GROUND-92, 14, 92);
+  ctx.fillRect(doorX+doorW, GROUND-92, 14, 92);
+  ctx.fillRect(doorX-14, GROUND-100, doorW+28, 12);
+  const dg=ctx.createLinearGradient(doorX,GROUND-88,doorX,GROUND);
+  dg.addColorStop(0,'#173a5c'); dg.addColorStop(1,'#0e2740');
+  ctx.fillStyle=dg; ctx.fillRect(doorX, GROUND-88, doorW, 88);
+  ctx.strokeStyle='rgba(160,200,230,.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(doorX+doorW/2, GROUND-88); ctx.lineTo(doorX+doorW/2, GROUND); ctx.stroke();
+
+  // brasão dourado no topo
+  const crX=bx+bw/2, crY=by-14;
+  ctx.fillStyle='#F2A900';
+  ctx.beginPath();
+  ctx.moveTo(crX-12,crY-10); ctx.lineTo(crX+12,crY-10); ctx.lineTo(crX+12,crY+4);
+  ctx.quadraticCurveTo(crX+12,crY+14,crX,crY+18); ctx.quadraticCurveTo(crX-12,crY+14,crX-12,crY+4);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#7e1e2b';
+  ctx.beginPath();
+  ctx.moveTo(crX-8,crY-6); ctx.lineTo(crX+8,crY-6); ctx.lineTo(crX+8,crY+3);
+  ctx.quadraticCurveTo(crX+8,crY+10,crX,crY+13); ctx.quadraticCurveTo(crX-8,crY+10,crX-8,crY+3);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#FFD46B'; ctx.font='700 9px "DM Sans",sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🦁', crX, crY+2);
+
+  // letreiro UNINASSAU
+  ctx.fillStyle='#ffffff';
+  ctx.font='800 26px "Bricolage Grotesque",sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=6;
+  ctx.fillText('UNINASSAU', bx+bw/2, by+58);
+  ctx.shadowBlur=0;
+  ctx.font='700 10px "DM Sans",sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.85)';
+  ctx.fillText('C A C O A L', bx+bw/2, by+78);
+
+  // escadaria de entrada
+  ctx.textAlign='left';
+  const steps=4;
+  for(let s=0;s<steps;s++){
+    const sw = doorW+36 + s*26, sh=7;
+    const sx2 = bx+(bw-sw)/2, sy2 = GROUND + s*sh;
+    ctx.fillStyle = s%2? '#b9b3aa':'#cfc8be';
+    ctx.fillRect(sx2, sy2, sw, sh);
+    ctx.fillStyle='rgba(0,0,0,.15)'; ctx.fillRect(sx2, sy2+sh-2, sw, 2);
+  }
+  // corrimãos
+  ctx.strokeStyle='#8f98a3'; ctx.lineWidth=3;
+  [[-1,doorX-30],[1,doorX+doorW+30]].forEach(([,hx])=>{
+    ctx.beginPath(); ctx.moveTo(hx, GROUND-26); ctx.lineTo(hx, GROUND+steps*7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx, GROUND-26); ctx.lineTo(hx+(hx<doorX?26:-26), GROUND-14); ctx.stroke();
+  });
+
+  ctx.restore();
+}
+
 function drawFinish(){
   const fx = FINISH_X()-scrollX;
-  if(fx<-40||fx>W+120) return;
+  if(fx<-360||fx>W+420) return;
+  drawCampus(fx);                                   // campus atrás do arco
   ctx.fillStyle='#1F3864'; ctx.fillRect(fx-4,GROUND-170,8,170); ctx.fillRect(fx+120,GROUND-170,8,170);
   ctx.fillStyle='#F2A900'; roundRect(fx-14,GROUND-186,152,26,6); ctx.fill();
   ctx.fillStyle='#132445'; ctx.font='700 14px "Bricolage Grotesque",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
