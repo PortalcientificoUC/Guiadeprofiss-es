@@ -188,6 +188,23 @@
   .score-card .t{font-size:.6rem; text-transform:uppercase; letter-spacing:1.3px; opacity:.75; margin-top:4px; font-weight:700}
   .rank-line{font-size:.94rem; margin-top:12px; line-height:1.5}
   .rank-line b{color:var(--gold-soft)}
+  .ranking{margin:14px auto 4px; max-width:420px; background:rgba(11,36,69,.5);
+       border:1px solid rgba(242,169,0,.35); border-radius:16px; padding:12px 16px 14px}
+  .rk-title{font-family:var(--display); font-weight:800; font-size:.92rem; color:var(--gold-soft);
+       letter-spacing:.4px; margin-bottom:8px}
+  .rk-list{list-style:none; display:flex; flex-direction:column; gap:5px; counter-reset:rk}
+  .rk-list li{display:flex; align-items:center; gap:10px; font-size:.86rem; font-weight:600;
+       background:rgba(19,36,69,.55); border-radius:10px; padding:7px 12px; counter-increment:rk}
+  .rk-list li::before{content:counter(rk); font-family:var(--display); font-weight:800;
+       width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+       background:rgba(253,243,222,.14); color:var(--cream); font-size:.78rem; flex-shrink:0}
+  .rk-list li:nth-child(1)::before{background:linear-gradient(180deg,#FFD46B,#F2A900); color:#3a2600}
+  .rk-list li:nth-child(2)::before{background:linear-gradient(180deg,#e8e8e8,#b9b9b9); color:#333}
+  .rk-list li:nth-child(3)::before{background:linear-gradient(180deg,#e0a878,#b5744a); color:#3a2000}
+  .rk-list li .rk-nome{flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .rk-list li .rk-nivel{font-size:.62rem; opacity:.7; font-weight:700; text-transform:uppercase; letter-spacing:.6px}
+  .rk-list li .rk-pts{font-family:var(--display); font-weight:800; color:var(--gold-soft)}
+  .rk-list li.me{outline:2px solid var(--gold); background:rgba(242,169,0,.16)}
   .gift{margin:16px auto 10px; max-width:440px; background:rgba(242,169,0,.12);
        border:1.5px dashed rgba(242,169,0,.75); border-radius:18px; padding:16px 18px 18px;
        display:flex; flex-direction:column; align-items:center; gap:8px;
@@ -242,16 +259,22 @@
     <div class="panel">
       <div class="eyebrow">UNINASSAU Cacoal · Rondônia · Guia de Profissões</div>
       <h1>A Trilha do <span class="sun">Sucesso</span></h1>
-      <p class="lede">Corra pela Amazônia, desbrave as <b>14 estações de carreira</b> e conquiste o <b>Troféu UNINASSAU Cacoal</b>. Preencha seu passaporte de explorador(a) para começar:</p>
+      <p class="lede">Corra pela Amazônia, desbrave as <b>15 estações da trilha</b> e conquiste o <b>Troféu UNINASSAU Cacoal</b>. Preencha seu passaporte de explorador(a) para começar:</p>
 
       <div class="form">
         <div class="field" id="fNome">
           <label>Nome completo *</label>
           <input id="inNome" maxlength="60" placeholder="Ex.: Maria Oliveira da Silva" autocomplete="name">
         </div>
-        <div class="field" id="fZap">
-          <label>WhatsApp *</label>
-          <input id="inZap" inputmode="tel" maxlength="16" placeholder="(69) 99999-9999" autocomplete="tel">
+        <div class="row2">
+          <div class="field" id="fZap">
+            <label>WhatsApp *</label>
+            <input id="inZap" inputmode="tel" maxlength="16" placeholder="(69) 99999-9999" autocomplete="tel">
+          </div>
+          <div class="field" id="fIdade">
+            <label>Idade *</label>
+            <input id="inIdade" inputmode="numeric" maxlength="3" placeholder="Ex.: 17">
+          </div>
         </div>
         <div class="row2">
           <div class="field" id="fC1">
@@ -364,6 +387,10 @@
         <div class="score-card"><div class="n" id="winAcc">0%</div><div class="t">Acertos</div></div>
       </div>
       <p class="rank-line" id="winRank"></p>
+      <div class="ranking" id="rankingBox">
+        <div class="rk-title">🏅 Top 5 Exploradores do Dia</div>
+        <ol class="rk-list" id="rankList"></ol>
+      </div>
       <div class="gift">
         <div class="gift-ico">🎁</div>
         <div class="gift-tx">
@@ -503,7 +530,7 @@ function sendLead(status){
   if(!lead) return;
   const rec = {
     datahora: new Date().toLocaleString('pt-BR'),
-    nome: lead.nome, whatsapp: lead.zap,
+    nome: lead.nome, whatsapp: lead.zap, idade: lead.idade || '',
     curso1: lead.c1, curso2: lead.c2,
     personagem: lead.char==='F' ? 'Jovem Exploradora' : 'Jovem Explorador',
     pontuacao: String(score||0), acertos: String(correctCount||0)+"/"+TOTAL,
@@ -521,8 +548,8 @@ function sendLead(status){
 window.addEventListener('keydown', e=>{
   if(e.ctrlKey && e.shiftKey && e.code==='KeyE'){
     if(!sessionLeads.length) return;
-    const head = "Data/Hora;Nome Completo;WhatsApp;1º Curso;2º Curso;Personagem;Pontuação;Acertos;Status\n";
-    const rows = sessionLeads.map(r=>[r.datahora,r.nome,r.whatsapp,r.curso1,r.curso2,r.personagem,r.pontuacao,r.acertos,r.status].join(';')).join('\n');
+    const head = "Data/Hora;Nome Completo;WhatsApp;Idade;1º Curso;2º Curso;Personagem;Pontuação;Acertos;Status\n";
+    const rows = sessionLeads.map(r=>[r.datahora,r.nome,r.whatsapp,r.idade,r.curso1,r.curso2,r.personagem,r.pontuacao,r.acertos,r.status].join(';')).join('\n');
     const blob = new Blob(["\ufeff"+head+rows], {type:'text/csv;charset=utf-8'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
     a.download='leads-trilha-do-sucesso.csv'; a.click();
@@ -774,6 +801,43 @@ function gameOver(){
   state='over'; sWrong();
   document.getElementById('over').classList.add('on');
 }
+/* ---------- Ranking Top 5 (persistente no navegador; se o
+   armazenamento não estiver disponível, vale só para a sessão) ---------- */
+const RK_KEY='trilhaSucessoRanking';
+let rankingMem=[];   // fallback em memória
+function loadRanking(){
+  try{ const raw=localStorage.getItem(RK_KEY); if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)) return arr; } }catch(e){}
+  return rankingMem;
+}
+function saveRanking(arr){
+  rankingMem=arr;
+  try{ localStorage.setItem(RK_KEY, JSON.stringify(arr)); }catch(e){}
+}
+function addToRanking(entry){
+  const arr=loadRanking().slice();
+  entry.id = Date.now()+"_"+Math.floor(Math.random()*9999);
+  arr.push(entry);
+  arr.sort((a,b)=> b.pts - a.pts);
+  const top = arr.slice(0,5);
+  saveRanking(top);
+  return { top, meId: entry.id };
+}
+function renderRanking(top, meId){
+  const ol=document.getElementById('rankList');
+  ol.innerHTML='';
+  if(!top.length){ document.getElementById('rankingBox').style.display='none'; return; }
+  document.getElementById('rankingBox').style.display='';
+  top.forEach(e=>{
+    const li=document.createElement('li');
+    if(e.id===meId) li.className='me';
+    li.innerHTML = '<span class="rk-nome">'+escapeHtml(e.nome)+'</span>'+
+                   '<span class="rk-nivel">'+escapeHtml(e.nivel)+'</span>'+
+                   '<span class="rk-pts">'+e.pts+'</span>';
+    ol.appendChild(li);
+  });
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
 function winGame(){
   state='win'; sWin();
   document.getElementById('winName').textContent = lead ? lead.nome.split(' ')[0] : "Explorador(a)";
@@ -787,6 +851,9 @@ function winGame(){
   else if(acc>=50){ rank="Desbravador(a)"; msg="já enxerga o mapa com clareza"; }
   else { rank="Aventureiro(a) Iniciante"; msg="começou uma grande jornada"; }
   document.getElementById('winRank').innerHTML = "Título conquistado: <b>"+rank+"</b> — quem "+msg+".";
+  const firstName = lead ? lead.nome.split(' ')[0] : "Explorador(a)";
+  const rkRes = addToRanking({ nome:firstName, pts:score, nivel:DIFF().label });
+  renderRanking(rkRes.top, rkRes.meId);
   sendLead("Concluiu — Troféu 🏆");
   launchConfetti();
   document.getElementById('win').classList.add('on');
@@ -1211,6 +1278,10 @@ function updateConfetti(){
   });
 })();
 // máscara simples de WhatsApp
+// idade: só dígitos
+document.getElementById('inIdade').addEventListener('input', e=>{
+  e.target.value = e.target.value.replace(/\D/g,'').slice(0,3);
+});
 document.getElementById('inZap').addEventListener('input', e=>{
   let d = e.target.value.replace(/\D/g,'').slice(0,11);
   let out = d;
@@ -1247,6 +1318,7 @@ selectDiff('M');
 function validateForm(){
   const nome = document.getElementById('inNome').value.trim().replace(/\s+/g,' ');
   const zapD = document.getElementById('inZap').value.replace(/\D/g,'');
+  const idade = document.getElementById('inIdade').value.replace(/\D/g,'');
   const c1 = document.getElementById('inC1').value;
   const c2 = document.getElementById('inC2').value;
   const msg = document.getElementById('formMsg');
@@ -1261,6 +1333,11 @@ function validateForm(){
   mark('fZap', !zapOk);
   if(!zapOk && !err) err = 'Digite um WhatsApp válido com DDD. Ex.: (69) 99999-9999';
 
+  const idadeN = parseInt(idade,10);
+  const idadeOk = idade!=='' && idadeN>=5 && idadeN<=110;
+  mark('fIdade', !idadeOk);
+  if(!idadeOk && !err) err = 'Informe sua idade (em anos).';
+
   mark('fC1', !c1);
   if(!c1 && !err) err = 'Escolha seu 1º curso de interesse.';
 
@@ -1271,7 +1348,7 @@ function validateForm(){
 
   if(err){ msg.textContent = '⚠️ '+err; msg.classList.add('show'); return null; }
   msg.classList.remove('show');
-  return { nome, zap: document.getElementById('inZap').value, c1, c2, char:selectedChar };
+  return { nome, zap: document.getElementById('inZap').value, idade:String(idadeN), c1, c2, char:selectedChar };
 }
 
 /* ---------- Botões ---------- */
@@ -1301,6 +1378,7 @@ document.getElementById('playAgain').onclick=()=>{
   document.getElementById('inZap').value='';
   document.getElementById('inC1').value='';
   document.getElementById('inC2').value='';
+  document.getElementById('inIdade').value='';
 };
 
 document.getElementById('muteBtn').onclick=()=>{ muted=!muted; document.getElementById('muteBtn').textContent=muted?'🔇':'🔊'; };
